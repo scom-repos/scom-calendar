@@ -5,9 +5,13 @@ export interface IDate {
 }
 
 export interface IEvent {
+  type?: string;
   title: string;
   startDate: string;
   endDate: string;
+  color?: string;
+  location?: string;
+  description?: string;
 }
 
 export interface ICalendar {

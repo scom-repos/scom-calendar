@@ -10,12 +10,17 @@ export default class Module1 extends Module {
             {
                 title: 'Event 1',
                 startDate: '2024-01-10T23:00:00.000Z',
-                endDate: '2024-01-11T02:00:00.000Z',
+                endDate: '2024-01-14T02:00:00.000Z',
             },
             {
                 title: 'Event 2',
-                startDate: '2024-01-13T09:00:00.000Z',
-                endDate: '2024-01-13T13:00:00.000Z',
+                startDate: '2024-01-10T04:00:00.000Z',
+                endDate: '2024-01-14T04:00:00.000Z',
+            },
+            {
+                title: 'Event 3',
+                startDate: '2024-01-15T09:00:00.000Z',
+                endDate: '2024-01-15T13:00:00.000Z',
             }
         ]
     }
@@ -26,7 +31,9 @@ export default class Module1 extends Module {
 
     render() {
         return <i-panel>
-            <i-scom-calendar></i-scom-calendar>
+            <i-scom-calendar
+                events={this._events}
+            ></i-scom-calendar>
         </i-panel>
     }
 }
