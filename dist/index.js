@@ -111,7 +111,7 @@ define("@scom/scom-calendar/index.css.ts", ["require", "exports", "@ijstech/comp
     exports.swipeStyle = exports.transitionStyle = void 0;
     const Theme = components_1.Styles.Theme.ThemeVars;
     exports.transitionStyle = components_1.Styles.style({
-        transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)'
+        transition: 'height 0.3s ease'
     });
     exports.swipeStyle = components_1.Styles.style({
         scrollSnapType: 'x mandatory',
@@ -137,21 +137,22 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
     const ROWS = 5;
     const defaultHolidayColor = Theme.colors.info.main;
     const defaultEventColor = Theme.colors.primary.main;
+    const currentColor = Theme.colors.secondary.main;
     let ScomCalendar = class ScomCalendar extends components_2.Module {
         constructor(parent, options) {
             super(parent, options);
             this.datesMap = new Map();
             this.gridMap = new Map();
-            this.eventsMap = new Map();
             this.selectedMap = new Map();
             this.initialDate = new Date();
             this.currentDate = new Date();
-            this._events = [];
             this.filteredData = {};
             this.pos1 = { x: 0, y: 0 };
             this.pos2 = { x: 0, y: 0 };
-            this.selectedMonth = '';
-            this.selectedString = '';
+            this.oldMonth = '';
+            this.datePnlHeight = 0;
+            this.isVerticalSwiping = false;
+            this._events = [];
             this.onFilterData = this.onFilterData.bind(this);
         }
         static async create(options, parent) {
@@ -172,12 +173,109 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.currentDate.getMonth() + 1 === date.month &&
                 this.currentDate.getFullYear() === date.year;
         }
+        get datesInMonth() {
+            const month = this.initialDate.getMonth() + 1;
+            const year = this.initialDate.getFullYear();
+            const monthKey = `${month}-${year}`;
+            let dates = [];
+            if (this.datesMap.has(monthKey)) {
+                dates = this.datesMap.get(monthKey);
+            }
+            else {
+                dates = this.getDates(month, year);
+            }
+            return dates;
+        }
+        get calendarData() {
+            const eventsMap = new Map();
+            for (let i = 0; i < this.datesInMonth.length; i++) {
+                const item = this.datesInMonth[i];
+                const holiday = this.getHoliday(item);
+                const events = this.getEvents(item);
+                const dateKey = `${item.date}-${item.month}-${item.year}`;
+                eventsMap.set(dateKey, { holiday, events });
+            }
+            return eventsMap;
+        }
+        getDates(month, year) {
+            let dates = [];
+            const firstDay = new Date(year, month - 1, 1).getDay();
+            const daysInMonth = this.daysInMonth(month, year);
+            const prevMonthLastDate = new Date(year, month - 1, 0);
+            const prevMonth = prevMonthLastDate.getMonth() + 1;
+            const prevYear = prevMonthLastDate.getFullYear();
+            const prevDate = prevMonthLastDate.getDate();
+            const prevDateStr = `${prevMonth}/${prevDate}/${prevYear}`;
+            if (firstDay > 0) {
+                dates.unshift({ month: prevMonth, year: prevYear, date: prevDate, day: prevMonthLastDate.getDay() });
+                for (let i = 1; i < firstDay; i++) {
+                    const before = (0, components_2.moment)(prevDateStr).subtract(i, 'days');
+                    dates.unshift({ month: prevMonth, year: prevYear, date: before.get('date'), day: before.get('day') });
+                }
+            }
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(year, month - 1, i);
+                dates.push({ month, year, date: i, day: date.getDay() });
+            }
+            const fillingDates = DATES_PER_SLIDE - dates.length;
+            if (fillingDates > 0) {
+                for (let i = 1; i <= fillingDates; i++) {
+                    const after = (0, components_2.moment)(`${month}/${daysInMonth}-${year}`).add(i, 'days');
+                    dates.push({ month: month + 1, year: year, date: after.get('date'), day: after.get('day') });
+                }
+            }
+            return dates;
+        }
+        daysInMonth(month, year) {
+            return new Date(year, month, 0).getDate();
+        }
+        getEventByStartDate(item) {
+            return [...this.events].filter(event => {
+                const date = (0, components_2.moment)(event.startDate);
+                if (date.get('month') + 1 === item.month && date.get('year') === item.year && date.get('date') === item.date) {
+                    return true;
+                }
+            });
+        }
+        getEvents(item) {
+            const { year, month, date } = item;
+            return [...this.events].filter(event => {
+                const startDate = (0, components_2.moment)(event.startDate).startOf('day');
+                const endDate = (0, components_2.moment)(event.endDate).endOf('day');
+                const checkingDate = (0, components_2.moment)(`${month}/${date}/${year}`).startOf('day');
+                return startDate.isSameOrBefore(checkingDate) && checkingDate.isSameOrBefore(endDate);
+            });
+        }
+        getHoliday(item) {
+            const { year, month, date } = item;
+            const finded = holidays_json_1.default.find(holiday => {
+                return (0, components_2.moment)(holiday.date).isSame((0, components_2.moment)(`${month}/${date}/${year}`));
+            });
+            return finded;
+        }
         setData({ events }) {
-            this.listStack.clearInnerHTML();
-            this.pnlSelected.clearInnerHTML();
+            this.clear();
             this.events = events;
-            this.pnlSelected.visible = false;
-            this.renderMonth(this.currentDate.getMonth() + 1, this.currentDate.getFullYear());
+            this.renderUI();
+        }
+        renderUI(direction) {
+            const month = this.initialDate.getMonth() + 1;
+            const year = this.initialDate.getFullYear();
+            const date = this.initialDate.getDate();
+            const monthName = this.initialDate.toLocaleString('default', { month: 'short' });
+            this.inputAdd.placeholder = `Add event on ${monthName} ${date}`;
+            this.renderMonth(month, year, direction);
+            this.renderEventSlider();
+        }
+        clear() {
+            this.listStack.clearInnerHTML();
+            this.updateDatesHeight('100%');
+            this.pnlSelected.height = 0;
+            this.gridMap = new Map();
+            this.selectedMap = new Map();
+            this.initialDate = new Date();
+            this.currentDate = new Date();
+            this.filteredData = {};
         }
         renderHeader() {
             this.gridHeader.clearInnerHTML();
@@ -199,17 +297,11 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const gridDates = this.$render("i-grid-layout", { templateRows: [`repeat(${ROWS}, 1fr)`], autoRowSize: 'auto', autoFillInHoles: true, columnsPerRow: 1, width: '100%', stack: { shrink: '0', grow: '0', basis: 'auto' }, class: "scroll-item" });
             gridDates.setAttribute('data-month', monthKey);
             for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-vstack", { border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, width: '100%', overflow: 'hidden' },
+                gridDates.append(this.$render("i-vstack", { border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, width: '100%', overflow: 'hidden', padding: { bottom: '0.75rem' }, minHeight: i == 0 ? '2rem' : 'auto' },
                     this.$render("i-grid-layout", { templateRows: ['auto'], templateColumns: [`repeat(${DAYS}, 1fr)`], width: '100%' }),
-                    this.$render("i-grid-layout", { templateRows: ['auto'], templateColumns: [`repeat(${DAYS}, 1fr)`], width: '100%', height: '100%', overflow: 'hidden', gap: { row: '0.25rem' }, padding: { bottom: '0.75rem' }, autoRowSize: 'auto', autoFillInHoles: true })));
+                    this.$render("i-grid-layout", { templateRows: ['auto'], templateColumns: [`repeat(${DAYS}, 1fr)`], width: '100%', overflow: 'hidden', gap: { row: '0.25rem' }, autoRowSize: 'auto', autoFillInHoles: true })));
             }
-            let dates = [];
-            if (this.datesMap.has(monthKey)) {
-                dates = this.datesMap.get(monthKey);
-            }
-            else {
-                dates = this.getDates(month, year);
-            }
+            const dates = [...this.datesInMonth];
             for (let i = 0; i < dates.length; i++) {
                 const rowIndex = Math.floor(i / DAYS);
                 if (!gridDates.children[rowIndex])
@@ -219,11 +311,12 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
                 const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
                 const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
-                const bgColor = this.isCurrentDate(item) ? Theme.colors.primary.main : 'transparent';
+                const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
                 const holiday = this.getHoliday(item);
                 const events = this.getEventByStartDate(item);
-                const el = (this.$render("i-vstack", { gap: "0.125rem", horizontalAlignment: 'center', padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: 'transparent' }, cursor: 'pointer', onClick: (target, event) => this.onDateClick(target, event, item, holiday, i === rowIndex * DAYS) },
-                    this.$render("i-label", { caption: item.date, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
+                const el = (this.$render("i-vstack", { gap: "0.125rem", horizontalAlignment: 'center', padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: 'transparent' }, cursor: 'pointer', onClick: (target, event) => this.onDateClick(target, item) },
+                    this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
+                el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
                 if (holiday) {
                     const holidayEl = this.renderHoliday(holiday, columnIndex);
                     gridDates.children[rowIndex].children[1].append(holidayEl);
@@ -232,18 +325,11 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                     for (let event of events) {
                         const eventEl = this.renderEvent(event, columnIndex);
                         gridDates.children[rowIndex].children[1].append(eventEl);
-                        if (this.eventsMap.has(monthKey)) {
-                            const list = this.eventsMap.get(monthKey);
-                            this.eventsMap.set(monthKey, [...list, eventEl]);
-                        }
-                        else {
-                            this.eventsMap.set(monthKey, [eventEl]);
-                        }
                     }
                 }
                 gridDates.children[rowIndex].children[0].append(el);
             }
-            const oldMonth = this.gridMap.get(this.selectedMonth);
+            const oldMonth = this.gridMap.get(this.oldMonth);
             this.listStack.append(gridDates);
             if (oldMonth && direction) {
                 if (direction === 1) {
@@ -259,47 +345,61 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         renderEvent(event, columnIndex) {
             const spanDays = (0, components_2.moment)(event.endDate).startOf('day').diff((0, components_2.moment)(event.startDate).startOf('day'), 'days');
             const columnSpan = spanDays === 0 ? 1 : spanDays;
-            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan, verticalAlignment: 'center' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '1rem', overflow: 'hidden', cursor: 'pointer' },
-                this.$render("i-label", { caption: event.title, font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } })));
+            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
+                this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } })));
             return eventEl;
         }
         renderHoliday(holiday, columnIndex) {
-            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'center' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, minHeight: 3, maxHeight: '1rem', overflow: 'hidden', cursor: 'pointer' },
-                this.$render("i-label", { caption: holiday.name, wordBreak: 'break-word', lineClamp: 2, font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } }));
+            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'start' }, padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', overflow: 'hidden', cursor: 'pointer' },
+                this.$render("i-label", { caption: holiday.name, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', textOverflow: 'ellipsis', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } }));
         }
-        renderSelected(data, holiday, events, direction) {
-            const { month, year, date } = data;
-            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
-            this.inputAdd.placeholder = `Add event on ${monthName} ${date}`;
+        renderEventSlider() {
+            const month = this.initialDate.getMonth() + 1;
+            const year = this.initialDate.getFullYear();
+            const calendarData = this.calendarData;
+            const itemsData = [];
+            for (let date of this.datesInMonth) {
+                if (date.month !== month || date.year !== year)
+                    continue;
+                const { holiday, events } = calendarData.get(`${date.date}-${date.month}-${date.year}`);
+                const eventEl = this.renderSliderItem(date, holiday, events);
+                itemsData.push({
+                    name: '',
+                    controls: [eventEl]
+                });
+            }
+            this.eventSlider.items = itemsData;
+            this.eventSlider.activeSlide = this.initialDate.getDate() - 1;
+        }
+        renderSliderItem(item, holiday, events) {
+            const { date, month, year } = item;
             const dateKey = `${date}-${month}-${year}`;
+            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
             const selectedPanel = this.selectedMap.get(dateKey);
             if (selectedPanel)
                 return;
-            const selectedWrap = this.$render("i-vstack", { width: '100%', stack: { shrink: '0', grow: '0', basis: 'auto' }, class: "scroll-item" });
+            const selectedWrap = this.$render("i-vstack", { width: '100%', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' } });
+            selectedWrap.setAttribute('data-slider-date', dateKey);
             const caption = `${date} ${monthName}`;
-            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', margin: { top: '1rem' } },
-                this.$render("i-label", { caption: caption, font: { size: '0.75rem', weight: 600 } }),
-                this.$render("i-panel", { border: { left: { width: '1px', style: 'solid', color: Theme.divider } }, height: '100%' }),
-                this.$render("i-label", { caption: '12c / 8c', font: { size: '0.75rem', weight: 600 } }),
-                this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.colors.warning.main, name: 'sun' }),
-                this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', margin: { left: 'auto' }, fill: Theme.text.primary, name: 'smile' })));
+            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between', margin: { top: '1rem' }, width: '100%', overflow: 'hidden' },
+                this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between' },
+                    this.$render("i-label", { caption: caption, font: { size: '0.75rem', weight: 600 } }),
+                    this.$render("i-panel", { border: { left: { width: '1px', style: 'solid', color: Theme.divider } }, height: '100%' }),
+                    this.$render("i-label", { caption: '12c / 8c', font: { size: '0.75rem', weight: 600 } }),
+                    this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.colors.warning.main, name: 'sun' })),
+                this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'smile' })));
             const eventsStack = this.$render("i-vstack", { width: "100%", gap: "1rem", margin: { top: '0.5rem' } });
             selectedWrap.append(eventsStack);
-            this.renderSelectedHoliday(holiday, eventsStack);
-            for (let i = 0; i < events.length; i++) {
-                this.renderSelectedEvent(events[i], eventsStack, i === events.length - 1);
+            if (!holiday && !events.length) {
+                eventsStack.append(this.$render("i-label", { margin: { top: '0.5rem' }, caption: 'No events', font: { size: '0.75rem', color: Theme.text.primary } }));
             }
-            this.pnlSelected.append(selectedWrap);
-            this.selectedMap.set(dateKey, selectedWrap);
-            const oldSelected = this.selectedMap.get(this.selectedString);
-            if (oldSelected && direction) {
-                if (direction === 1) {
-                    this.pnlSelected.insertBefore(oldSelected, selectedWrap);
-                }
-                else {
-                    this.pnlSelected.insertBefore(selectedWrap, oldSelected);
+            else {
+                this.renderSelectedHoliday(holiday, eventsStack);
+                for (let i = 0; i < events.length; i++) {
+                    this.renderSelectedEvent(events[i], eventsStack, i === events.length - 1);
                 }
             }
+            return selectedWrap;
         }
         renderSelectedEvent(event, parent, isLast) {
             const startTime = (0, components_2.moment)(event.startDate).format('HH:mm');
@@ -325,159 +425,85 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                     this.$render("i-vstack", { verticalAlignment: 'center', margin: { left: 'auto' }, stack: { shrink: '0' } },
                         this.$render("i-icon", { width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'calendar-week' })))));
         }
-        getDates(month, year) {
-            let dates = [];
-            const firstDay = new Date(year, month - 1, 1).getDay();
-            const daysInMonth = this.daysInMonth(month, year);
-            const prevMonthLastDate = new Date(year, month - 1, 0);
-            const prevMonth = prevMonthLastDate.getMonth() + 1;
-            const prevYear = prevMonthLastDate.getFullYear();
-            const prevDate = prevMonthLastDate.getDate();
-            const prevDateStr = `${prevYear}-${prevMonth}-${prevDate}`;
-            if (firstDay > 0) {
-                dates.unshift({ month: prevMonth, year: prevYear, date: prevDate });
-                for (let i = 1; i < firstDay; i++) {
-                    const before = (0, components_2.moment)(prevDateStr).subtract(i, 'days');
-                    dates.unshift({ month: prevMonth, year: prevYear, date: before.get('date') });
-                }
-            }
-            for (let i = 1; i <= daysInMonth; i++) {
-                dates.push({ month, year, date: i });
-            }
-            const fillingDates = DATES_PER_SLIDE - dates.length;
-            if (fillingDates > 0) {
-                for (let i = 1; i <= fillingDates; i++) {
-                    const after = (0, components_2.moment)(`${year}-${month}-${daysInMonth}`).add(i, 'days');
-                    dates.push({ month: month + 1, year: year, date: after.get('date') });
-                }
-            }
-            return dates;
-        }
-        daysInMonth(month, year) {
-            return new Date(year, month, 0).getDate();
-        }
-        getEventByStartDate(item) {
-            return [...this.events].filter(event => {
-                const date = (0, components_2.moment)(event.startDate);
-                if (date.get('month') + 1 === item.month && date.get('year') === item.year && date.get('date') === item.date) {
-                    return true;
-                }
-            });
-        }
-        getEvents(item) {
-            const { year, month, date } = item;
-            return [...this.events].filter(event => {
-                const startDate = (0, components_2.moment)(event.startDate).startOf('day');
-                const endDate = (0, components_2.moment)(event.endDate).endOf('day');
-                const checkingDate = (0, components_2.moment)(`${year}-${month}-${date}`).startOf('day');
-                return startDate.isSameOrBefore(checkingDate) && checkingDate.isSameOrBefore(endDate);
-            });
-        }
-        getHoliday(item) {
-            const { year, month, date } = item;
-            const finded = holidays_json_1.default.find(holiday => {
-                return (0, components_2.moment)(holiday.date).isSame((0, components_2.moment)(`${year}-${month}-${date}`));
-            });
-            return finded;
-        }
-        onDateClick(target, event, date, holiday, isSunday) {
-            event.preventDefault();
-            event.stopPropagation();
-            const events = this.getEvents(date);
-            this.resetSelectedDate(date, isSunday);
-            if (!holiday && !events?.length) {
-                this.pnlSelected.visible = false;
-                return;
-            }
-            this.updateSelected(date, holiday, events);
+        onDateClick(target, date) {
+            this.updateOldDate(date);
+            this.initialDate = new Date(date.year, date.month - 1, date.date);
+            this.updateNewDate(target, date);
+            this.updateDatesHeight('40%');
+            this.pnlSelected.height = 'auto';
+            this.eventSlider.activeSlide = date.date - 1;
             this.filteredData.date = date;
             if (this.onFilter)
                 this.onFilter({ date });
         }
-        updateSelected(date, holiday, events, direction) {
-            this.pnlSelected.visible = true;
-            this.renderSelected(date, holiday, events, direction);
-            // this.selectedDate = target;
-            // const label = target.querySelector('i-label') as Control;
-            // if (label) {
-            //   label.font = { color: Theme.colors.primary.contrastText, size: '0.875rem', weight: 500 };
-            //   label.background.color = Theme.colors.primary.main;
-            // }
-        }
-        resetSelectedDate(date, isSunday) {
+        updateOldDate(date) {
             if (this.selectedDate) {
                 const label = this.selectedDate.querySelector('i-label');
                 if (label) {
-                    const defaultColor = isSunday ? Theme.colors.error.main : Theme.text.primary;
+                    const defaultColor = date.day === 0 ? Theme.colors.error.main : Theme.text.primary;
                     label.font = { size: '0.875rem', weight: 500, color: this.isCurrentDate(date) ? Theme.colors.primary.contrastText : defaultColor };
                     label.background.color = 'transparent';
                 }
             }
         }
+        updateNewDate(target, data) {
+            const { month, year, date } = data;
+            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
+            this.inputAdd.placeholder = `Add event on ${monthName} ${date}`;
+            this.selectedDate = target;
+            const label = target?.querySelector('i-label');
+            if (label) {
+                label.font = { color: Theme.colors.primary.contrastText, size: '0.875rem', weight: 500 };
+                label.background.color = Theme.colors.primary.main;
+            }
+        }
+        updateDatesHeight(height) {
+            this.pnlDates.height = height;
+            let opacity = '1';
+            if (typeof height === 'string') {
+                opacity = height === '40%' ? '0' : '1';
+            }
+            else {
+                const eventHeight = height * 0.05;
+                opacity = eventHeight < 20 ? '0' : '1';
+            }
+            this.style.setProperty('--event-opacity', opacity);
+            this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
+        }
         onNextMonth() {
-            this.selectedMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
+            this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
             this.initialDate.setMonth(this.initialDate.getMonth() + 1);
-            this.renderMonth(this.initialDate.getMonth() + 1, this.initialDate.getFullYear(), 1);
+            this.renderUI(1);
         }
         onPrevMonth() {
-            this.selectedMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
+            this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
             this.initialDate.setMonth(this.initialDate.getMonth() - 1);
-            this.renderMonth(this.initialDate.getMonth() + 1, this.initialDate.getFullYear(), -1);
+            this.renderUI(-1);
         }
-        onNextDay() {
-            this.selectedString = `${this.initialDate.getDate()}-${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
-            this.initialDate.setDate(this.initialDate.getDate() + 1);
-            const date = {
-                month: this.initialDate.getMonth() + 1,
-                year: this.initialDate.getFullYear(),
-                date: this.initialDate.getDate()
-            };
-            const holiday = this.getHoliday(date);
-            const events = this.getEvents(date);
-            this.updateSelected(date, holiday, events, 1);
-        }
-        onPrevDay() {
-            this.selectedString = `${this.initialDate.getDate()}-${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
-            this.initialDate.setDate(this.initialDate.getDate() - 1);
-            const date = {
-                month: this.initialDate.getMonth() + 1,
-                year: this.initialDate.getFullYear(),
-                date: this.initialDate.getDate()
-            };
-            const holiday = this.getHoliday(date);
-            const events = this.getEvents(date);
-            this.updateSelected(date, holiday, events, -1);
-        }
-        // private onCurrent() {
-        //   this.initialDate = new Date();
-        //   this.currentDate = new Date();
-        //   this.renderMonth(this.initialDate.getMonth() + 1, this.initialDate.getFullYear());
-        // }
         onFilterData(target) {
-            const children = target.parent?.children || [];
-            for (let child of children) {
-                if (child.id === target.id) {
-                    child.background.color = Theme.background.default;
-                    child.font.color = Theme.text.primary;
-                }
-                else {
-                    child.background.color = 'transparent';
-                    child.font.color = Theme.text.secondary;
-                }
-            }
             this.filteredData.type = target.caption;
             if (this.onFilter)
                 this.onFilter({ type: target.caption });
         }
         onAddEvent() {
         }
+        onSlideChanged(index) {
+            const month = this.initialDate.getMonth() + 1;
+            const year = this.initialDate.getFullYear();
+            const dates = this.datesMap.get(`${month}-${year}`);
+            const newDate = dates.find(date => date.date === index + 1);
+            this.updateOldDate(newDate);
+            this.initialDate.setDate(newDate.date);
+            const dataDate = `${newDate.date}-${newDate.month}-${newDate.year}`;
+            const target = this.listStack.querySelector(`[data-date="${dataDate}"]`);
+            this.updateNewDate(target, newDate);
+        }
         _handleMouseDown(event, stopPropagation) {
             const result = super._handleMouseDown(event, stopPropagation);
             if (result !== undefined) {
                 const target = event.target;
                 const sliderList = target.closest('#listStack');
-                const pnlSelected = target.closest('#pnlSelected');
-                if (sliderList || pnlSelected) {
+                if (sliderList) {
                     this.dragStartHandler(event);
                     return true;
                 }
@@ -489,8 +515,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             if (result !== undefined) {
                 const target = event.target;
                 const sliderList = target.closest('#listStack');
-                const pnlSelected = target.closest('#pnlSelected');
-                if (sliderList || pnlSelected) {
+                if (sliderList) {
                     this.dragHandler(event);
                     return true;
                 }
@@ -506,19 +531,14 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                     this.dragEndHandler(event);
                     return true;
                 }
-                const pnlSelected = target.closest('#pnlSelected');
-                if (pnlSelected) {
-                    this.dragSelectedEndHandler(event);
-                    return true;
-                }
             }
             return false;
         }
         dragStartHandler(event) {
             if (event instanceof TouchEvent) {
                 this.pos1 = {
-                    x: event.touches[0].clientX,
-                    y: event.touches[0].clientY
+                    x: event.touches[0].pageX,
+                    y: event.touches[0].pageY
                 };
             }
             else {
@@ -529,62 +549,57 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 };
             }
             this.pos2 = { x: 0, y: 0 };
+            this.datePnlHeight = this.pnlDates.offsetHeight;
+            this.isVerticalSwiping = false;
         }
         dragHandler(event) {
+            event.preventDefault();
             if (event instanceof TouchEvent) {
                 this.pos2 = {
-                    x: this.pos1.x - event.touches[0].clientX,
-                    y: this.pos1.y - event.touches[0].clientY
+                    x: this.pos1.x - event.touches[0].pageX,
+                    y: event.touches[0].pageY - this.pos1.y
                 };
             }
             else {
                 this.pos2 = {
                     x: this.pos1.x - event.clientX,
-                    y: this.pos1.y - event.clientY
+                    y: event.pageY - this.pos1.y
                 };
+            }
+            const containerHeight = this.pnlWrapper.offsetHeight;
+            const verticalThreshold = 50;
+            if (Math.abs(this.pos2.y) > verticalThreshold) {
+                this.isVerticalSwiping = true;
+                let newHeight = this.datePnlHeight + this.pos2.y;
+                this.pnlSelected.height = 'auto';
+                if (newHeight > containerHeight) {
+                    newHeight = containerHeight;
+                    this.pnlSelected.height = 0;
+                }
+                else if (newHeight < 200) {
+                    newHeight = 100;
+                }
+                this.updateDatesHeight(newHeight);
             }
         }
         dragEndHandler(event) {
-            const threshold = this.pnlWrapper.offsetWidth * 0.3;
-            if (this.pos2.x < -threshold) {
-                this.onPrevMonth();
-                this.listStack.scrollTo({
-                    left: this.listStack.scrollLeft - this.pnlWrapper.offsetWidth,
-                    behavior: 'smooth',
-                });
-            }
-            else if (this.pos2.x > threshold) {
-                this.onNextMonth();
-                this.listStack.scrollTo({
-                    left: this.listStack.scrollLeft + this.pnlWrapper.offsetWidth,
-                    behavior: 'smooth',
-                });
-            }
-        }
-        dragSelectedEndHandler(event) {
-            const threshold = this.pnlWrapper.offsetWidth * 0.2;
-            if (this.pos2.x < -threshold) {
-                this.onPrevDay();
-                this.listStack.scrollTo({
-                    left: this.pnlSelected.scrollLeft - this.pnlWrapper.offsetWidth,
-                    behavior: 'smooth',
-                });
-            }
-            else if (this.pos2.x > threshold) {
-                this.onNextDay();
-                this.pnlSelected.scrollTo({
-                    left: this.listStack.scrollLeft + this.pnlWrapper.offsetWidth,
-                    behavior: 'smooth',
-                });
-            }
-        }
-        updateHeight() {
-            const threshold = this.pnlWrapper.offsetHeight * 0.3;
-            if (this.pos2.y < -threshold) {
-                this.pnlSelected.visible = true;
-            }
-            else if (this.pos2.y > threshold) {
-                this.pnlSelected.visible = false;
+            if (!this.isVerticalSwiping) {
+                const containerWidth = this.pnlWrapper.offsetWidth;
+                const horizontalThreshold = containerWidth * 0.3;
+                if (this.pos2.x < -horizontalThreshold) {
+                    this.onPrevMonth();
+                    this.listStack.scrollTo({
+                        left: this.listStack.scrollLeft - containerWidth,
+                        behavior: 'smooth',
+                    });
+                }
+                else if (this.pos2.x > horizontalThreshold) {
+                    this.onNextMonth();
+                    this.listStack.scrollTo({
+                        left: this.listStack.scrollLeft + containerWidth,
+                        behavior: 'smooth',
+                    });
+                }
             }
         }
         init() {
@@ -595,15 +610,16 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.setData({ events });
         }
         render() {
-            return (this.$render("i-panel", { id: "pnlWrapper" },
-                this.$render("i-vstack", { width: '100%', height: 'calc(100dvh - 3.125rem)', overflow: 'hidden', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' }, gap: "1rem" },
-                    this.$render("i-vstack", { id: "pnlDates", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 200, overflow: { y: 'auto' } },
+            return (this.$render("i-panel", { maxHeight: '100dvh', overflow: 'hidden' },
+                this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: 'calc(100vh - 3.125rem)', overflow: 'hidden', gap: "1rem" },
+                    this.$render("i-vstack", { id: "pnlDates", minHeight: 100, maxHeight: '99%', padding: { top: '0.5rem', left: '0.75rem', right: '0.75rem' }, overflow: 'hidden', class: index_css_1.transitionStyle },
                         this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "0.25rem" },
                             this.$render("i-label", { id: "lbMonth", font: { size: '1.25rem', weight: 600 } }),
                             this.$render("i-label", { id: "lbYear", font: { size: '1.25rem', color: Theme.text.secondary } })),
                         this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                         this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: index_css_1.swipeStyle, stack: { grow: '1' } })),
-                    this.$render("i-hstack", { id: "pnlSelected", border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: '50%', overflow: { x: 'auto' }, class: index_css_1.swipeStyle, visible: false })),
+                    this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0, overflow: 'hidden' },
+                        this.$render("i-carousel-slider", { id: "eventSlider", swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))),
                 this.$render("i-panel", { position: 'fixed', bottom: "0px", left: "0px", zIndex: 999, width: '100%', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.5rem', right: '0.5rem' } },
                     this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between', gap: '1rem' },
                         this.$render("i-input", { id: "inputAdd", placeholder: "Add event on", border: { radius: '9999px', width: '1px', style: 'solid', color: Theme.divider }, height: '3.125rem', width: '100%', font: { size: '1rem' }, padding: { top: '0.25rem', bottom: '0.25rem', left: '1.25rem', right: '1.25rem' }, boxShadow: 'none' }),

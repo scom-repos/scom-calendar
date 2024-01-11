@@ -2,6 +2,7 @@ export interface IDate {
   date: number;
   month: number;
   year: number;
+  day?: number;
 }
 
 export interface IEvent {

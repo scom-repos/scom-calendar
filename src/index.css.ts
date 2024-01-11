@@ -2,7 +2,7 @@ import { Styles } from '@ijstech/components';
 const Theme = Styles.Theme.ThemeVars;
 
 export const transitionStyle = Styles.style({
-  transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)'
+  transition: 'height 0.3s ease'
 })
 
 export const swipeStyle = Styles.style({
