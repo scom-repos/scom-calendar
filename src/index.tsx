@@ -670,20 +670,26 @@ export default class ScomCalendar extends Module {
 
   dragHandler(event: MouseEvent | TouchEvent) {
     event.preventDefault();
+    let deltaX = 0;
     if (event instanceof TouchEvent) {
       this.pos2 = {
         x: this.pos1.x - event.touches[0].pageX,
         y: event.touches[0].pageY - this.pos1.y
       }
+      deltaX = event.touches[0].pageX - this.pos1.x;
     } else {
       this.pos2 = {
         x: this.pos1.x - event.clientX,
         y: event.pageY - this.pos1.y
       }
+      deltaX = event.clientX - this.pos1.x;
     }
 
+    const containerWidth = this.pnlWrapper.offsetWidth;
     const containerHeight = this.pnlWrapper.offsetHeight;
-    if (Math.abs(this.pos2.y) > 30) {
+    const horizontalThreshold = containerWidth * 0.3;
+    const verticalThreshold = this.datePnlHeight * 0.1;
+    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < horizontalThreshold) {
       this.isVerticalSwiping = true;
       let newHeight = this.datePnlHeight + this.pos2.y;
       this.pnlSelected.height = 'auto';
@@ -694,13 +700,15 @@ export default class ScomCalendar extends Module {
         newHeight = 100;
       }
       this.updateDatesHeight(newHeight);
+    } else {
+      this.isVerticalSwiping = false;
     }
   }
 
   dragEndHandler(event: MouseEvent | TouchEvent) {
     if (!this.isVerticalSwiping) {
       const containerWidth = this.pnlWrapper.offsetWidth;
-      const horizontalThreshold = 30; // containerWidth * 0.3;
+      const horizontalThreshold = 30;
       if (this.pos2.x < -horizontalThreshold) {
         this.onPrevMonth();
         this.listStack.scrollTo({

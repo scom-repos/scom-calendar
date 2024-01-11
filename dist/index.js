@@ -554,21 +554,26 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         }
         dragHandler(event) {
             event.preventDefault();
+            let deltaX = 0;
             if (event instanceof TouchEvent) {
                 this.pos2 = {
                     x: this.pos1.x - event.touches[0].pageX,
                     y: event.touches[0].pageY - this.pos1.y
                 };
+                deltaX = event.touches[0].pageX - this.pos1.x;
             }
             else {
                 this.pos2 = {
                     x: this.pos1.x - event.clientX,
                     y: event.pageY - this.pos1.y
                 };
+                deltaX = event.clientX - this.pos1.x;
             }
+            const containerWidth = this.pnlWrapper.offsetWidth;
             const containerHeight = this.pnlWrapper.offsetHeight;
-            const verticalThreshold = 50;
-            if (Math.abs(this.pos2.y) > verticalThreshold) {
+            const horizontalThreshold = containerWidth * 0.3;
+            const verticalThreshold = this.datePnlHeight * 0.1;
+            if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < horizontalThreshold) {
                 this.isVerticalSwiping = true;
                 let newHeight = this.datePnlHeight + this.pos2.y;
                 this.pnlSelected.height = 'auto';
@@ -581,11 +586,14 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 }
                 this.updateDatesHeight(newHeight);
             }
+            else {
+                this.isVerticalSwiping = false;
+            }
         }
         dragEndHandler(event) {
             if (!this.isVerticalSwiping) {
                 const containerWidth = this.pnlWrapper.offsetWidth;
-                const horizontalThreshold = containerWidth * 0.3;
+                const horizontalThreshold = 30;
                 if (this.pos2.x < -horizontalThreshold) {
                     this.onPrevMonth();
                     this.listStack.scrollTo({
