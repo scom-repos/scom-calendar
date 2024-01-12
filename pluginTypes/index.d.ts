@@ -14,6 +14,8 @@ declare module "@scom/scom-calendar/interface.ts" {
         color?: string;
         location?: string;
         description?: string;
+        link?: string;
+        conferenceId?: string;
     }
     export interface ICalendar {
         events?: IEvent[];
@@ -36,6 +38,14 @@ declare module "@scom/scom-calendar/data/holidays.json.ts" {
 declare module "@scom/scom-calendar/index.css.ts" {
     export const transitionStyle: string;
     export const swipeStyle: string;
+}
+/// <amd-module name="@scom/scom-calendar/assets.ts" />
+declare module "@scom/scom-calendar/assets.ts" {
+    function fullPath(path: string): string;
+    const _default_1: {
+        fullPath: typeof fullPath;
+    };
+    export default _default_1;
 }
 /// <amd-module name="@scom/scom-calendar" />
 declare module "@scom/scom-calendar" {
@@ -65,7 +75,7 @@ declare module "@scom/scom-calendar" {
         private pnlSelected;
         private eventSlider;
         private datesMap;
-        private gridMap;
+        private monthsMap;
         private selectedMap;
         private initialDate;
         private currentDate;
@@ -75,6 +85,9 @@ declare module "@scom/scom-calendar" {
         private oldMonth;
         private datePnlHeight;
         private isVerticalSwiping;
+        private isHorizontalSwiping;
+        private viewMode;
+        private currentMonth;
         private _events;
         onFilter: (data?: any) => void;
         constructor(parent?: Container, options?: any);
@@ -82,6 +95,8 @@ declare module "@scom/scom-calendar" {
         get events(): IEvent[];
         set events(value: IEvent[]);
         private isCurrentDate;
+        private get initialData();
+        private get monthKey();
         private get datesInMonth();
         private get calendarData();
         private getDates;
@@ -106,17 +121,23 @@ declare module "@scom/scom-calendar" {
         private updateOldDate;
         private updateNewDate;
         private updateDatesHeight;
-        private onNextMonth;
-        private onPrevMonth;
+        private onMonthChanged;
         private onFilterData;
-        private onAddEvent;
         private onSlideChanged;
+        private onSelectedDateChanged;
         _handleMouseDown(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseMove(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseUp(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
-        dragStartHandler(event: MouseEvent | TouchEvent): void;
-        dragHandler(event: MouseEvent | TouchEvent): void;
-        dragEndHandler(event: MouseEvent | TouchEvent): void;
+        private dragStartHandler;
+        private dragHandler;
+        private dragEndHandler;
+        private animateFn;
+        onSwipeFullMonth(direction?: 1 | -1): void;
+        onSwipeMonthEvents(): void;
+        onSwipeWeek(direction?: 1 | -1): void;
+        private activeDateWeek;
+        private updateMonthUI;
+        private onScroll;
         init(): void;
         render(): void;
     }
