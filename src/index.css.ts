@@ -6,10 +6,12 @@ export const transitionStyle = Styles.style({
 })
 
 export const swipeStyle = Styles.style({
-  scrollSnapType: 'x mandatory',
-  "-webkit-scroll-snap-type": 'x mandatory',
-  overflowX: 'auto',
-  '-webkit-overflow-scrolling': 'touch',
+  // scrollSnapType: 'x mandatory',
+  // "-webkit-scroll-snap-type": 'x mandatory',
+  // overflowX: 'auto',
+  // '-webkit-overflow-scrolling': 'unset',
+  // scrollBehavior: 'smooth',
+  transition: 'transform 0.3s ease',
   $nest: {
     '.scroll-item': {
       scrollSnapAlign: 'start'

@@ -13,6 +13,8 @@ export interface IEvent {
   color?: string;
   location?: string;
   description?: string;
+  link?: string;
+  conferenceId?: string;
 }
 
 export interface ICalendar {

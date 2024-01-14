@@ -21,6 +21,13 @@ export default class Module1 extends Module {
                 title: 'Event 3',
                 startDate: '2024-01-15T09:00:00.000Z',
                 endDate: '2024-01-15T13:00:00.000Z',
+            },
+            {
+                title: 'Meeting 1',
+                startDate: '2024-01-15T09:00:00.000Z',
+                endDate: '2024-01-15T13:00:00.000Z',
+                link: 'https://meet.google.com/meeting_id',
+                "conferenceId": "meeting_id"
             }
         ]
     }
@@ -33,6 +40,9 @@ export default class Module1 extends Module {
         return <i-panel>
             <i-scom-calendar
                 events={this._events}
+                height="100vh"
+                width={'100vw'}
+                display='block'
             ></i-scom-calendar>
         </i-panel>
     }
