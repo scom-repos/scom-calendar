@@ -63,6 +63,7 @@ export default class ScomCalendar extends Module {
   private pnlDates: Panel;
   private pnlSelected: Panel;
   private eventSlider: CarouselSlider;
+  private selectedMonth: StackLayout;
 
   private datesMap: Map<string, IDate[]> = new Map();
   private monthsMap: Map<string, StackLayout> = new Map();
@@ -77,7 +78,9 @@ export default class ScomCalendar extends Module {
   private isVerticalSwiping: boolean = false;
   private isHorizontalSwiping: boolean = false;
   private viewMode: 'month' | 'week' = 'month';
-  private currentMonth: GridLayout|undefined = undefined;
+  private isInitialWeek: boolean = false;
+  private initalDay: number = 0;
+  private currentMonth: { month: number, year: number };
 
   private _events: IEvent[] = [];
 
@@ -183,14 +186,14 @@ export default class ScomCalendar extends Module {
     return new Date(year, month, 0).getDate();
   }
 
-  private getEventByStartDate(item: IDate) {
-    return [...this.events].filter(event => {
-      const date = moment(event.startDate);
-      if (date.get('month') + 1 === item.month && date.get('year') === item.year && date.get('date') === item.date) {
-        return true;
-      }
-    })
-  }
+  // private getEventByStartDate(item: IDate) {
+  //   return [...this.events].filter(event => {
+  //     const date = moment(event.startDate);
+  //     if (date.get('month') + 1 === item.month && date.get('year') === item.year && date.get('date') === item.date) {
+  //       return true;
+  //     }
+  //   })
+  // }
 
   private getEvents(item: IDate) {
     const { year, month, date } = item;
@@ -232,8 +235,10 @@ export default class ScomCalendar extends Module {
     this.monthsMap = new Map();
     this.selectedMap = new Map();
     this.initialDate = new Date();
+    this.initalDay = this.initialDate.getDay();
     this.currentDate = new Date();
     this.filteredData = {};
+    this.isInitialWeek = false;
   }
 
   private renderHeader() {
@@ -262,7 +267,6 @@ export default class ScomCalendar extends Module {
       this.updateMonthUI(gridMonth);
       return;
     }
-
     const gridDates = <i-stack
       direction={this.viewMode === 'month' ? 'vertical' : 'horizontal'}
       width={'100%'}
@@ -355,6 +359,7 @@ export default class ScomCalendar extends Module {
 
     this.datesMap.set(`${month}-${year}`, dates);
     this.monthsMap.set(`${month}-${year}`, gridDates);
+    this.selectedMonth = gridDates;
   }
 
   private renderEvent(event: IEvent, columnIndex: number) {
@@ -405,20 +410,25 @@ export default class ScomCalendar extends Module {
   }
 
   private renderEventSlider() {
-    const { month, year } = this.initialData;
     const calendarData = this.calendarData;
     const itemsData = [];
-    for (let date of this.datesInMonth) {
-      if (date.month !== month || date.year !== year) continue;
+    let activeIndex = 0;
+    const currentDate = this.initialDate.getDate();
+    const currentMonth = this.initialDate.getMonth() + 1;
+    for (let i = 0; i < this.datesInMonth.length; i++) {
+      const date = this.datesInMonth[i];
       const { holiday, events } = calendarData.get(`${date.date}-${date.month}-${date.year}`);
       const eventEl = this.renderSliderItem(date, holiday, events);
       itemsData.push({
         name: '',
         controls: [eventEl]
       })
+      if (currentDate === date.date && currentMonth === date.month) {
+        activeIndex = i;
+      }
     }
     this.eventSlider.items = itemsData;
-    this.eventSlider.activeSlide = this.initialDate.getDate() - 1;
+    this.eventSlider.activeSlide = activeIndex;
   }
 
   private renderSliderItem(item: IDate, holiday: any, events: IEvent[]) {
@@ -555,13 +565,15 @@ export default class ScomCalendar extends Module {
     if (this.isVerticalSwiping || this.isHorizontalSwiping) return;
     this.updateOldDate();
     this.initialDate = new Date(date.year, date.month - 1, date.date);
+    this.initalDay = this.initialDate.getDay();
     this.updateNewDate(target, date);
     if (this.viewMode === 'month') {
       this.updateDatesHeight('40%');
       this.pnlSelected.height = 'auto';
     }
 
-    this.eventSlider.activeSlide = date.date - 1;
+    const index = this.datesMap.get(`${date.month}-${date.year}`).findIndex(d => d.date === date.date && d.month === date.month);
+    this.eventSlider.activeSlide = index;
 
     this.filteredData.date = date;
     if (this.onFilter) this.onFilter({ date });
@@ -593,6 +605,7 @@ export default class ScomCalendar extends Module {
   private onMonthChanged(direction: 1 | -1) {
     this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
     this.initialDate.setMonth(this.initialDate.getMonth() + direction);
+    this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
     this.renderUI(direction);
   }
 
@@ -604,7 +617,7 @@ export default class ScomCalendar extends Module {
   private onSlideChanged(index: number) {
     const { month, year } = this.initialData;
     const dates = this.datesMap.get(`${month}-${year}`);
-    const newDate = dates.find(date => date.date === index + 1);
+    const newDate = dates[index];
     this.onSelectedDateChanged(newDate);
   }
 
@@ -612,6 +625,7 @@ export default class ScomCalendar extends Module {
     this.updateOldDate();
     const { date, month, year } = data;
     this.initialDate = new Date(year, month - 1, date);
+    this.initalDay = this.initialDate.getDay();
     const dataDate = `${date}-${month}-${year}`;
     const target = this.listStack.querySelector(`[data-date="${dataDate}"]`) as VStack;
     this.updateNewDate(target, data);
@@ -678,38 +692,36 @@ export default class ScomCalendar extends Module {
   private dragHandler(event: MouseEvent | TouchEvent) {
     event.preventDefault();
     let deltaX = 0;
-    let deltaY = 0;
     if (event instanceof TouchEvent) {
       this.pos2 = {
         x: this.pos1.x - event.touches[0].pageX,
         y: event.touches[0].pageY - this.pos1.y
       }
       deltaX = event.touches[0].pageX - this.pos1.x;
-      deltaY = event.touches[0].pageY - this.pos1.y;
     } else {
       this.pos2 = {
         x: this.pos1.x - event.clientX,
         y: event.pageY - this.pos1.y
       }
       deltaX = event.clientX - this.pos1.x;
-      deltaY = event.clientY - this.pos1.y;
     }
 
-    const containerWidth = this.pnlWrapper.offsetWidth;
+    const containerWidth = this.listStack.offsetWidth;
     const containerHeight = this.pnlWrapper.offsetHeight;
-    const horizontalThreshold = containerWidth * 0.3;
+    const horizontalThreshold = containerWidth * 0.1;
     const verticalThreshold = this.datePnlHeight * 0.1;
     if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < horizontalThreshold) {
       this.isVerticalSwiping = true;
       this.isHorizontalSwiping = false;
       const newHeight = this.datePnlHeight + this.pos2.y;
-      if (newHeight > containerHeight * 0.75) {
+      if (newHeight > containerHeight * 0.4 && this.pos2.y > verticalThreshold) {
         this.onSwipeFullMonth();
-      } else if (newHeight < containerHeight * 0.25) {
+      } else if (newHeight < containerHeight * 0.4 && this.pos2.y < -verticalThreshold) {
         this.onSwipeWeek();
       } else {
         this.onSwipeMonthEvents();
       }
+      return false;
     } else if (Math.abs(deltaX) >= horizontalThreshold) {
       this.isVerticalSwiping = false;
       this.isHorizontalSwiping = true;
@@ -740,7 +752,7 @@ export default class ScomCalendar extends Module {
   }
 
   private animateFn(framefn: any) {
-    const duration = 500;
+    const duration = 300;
     const easing = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
     const animateScroll = (timestamp: number) => {
@@ -778,98 +790,105 @@ export default class ScomCalendar extends Module {
     this.updateDatesHeight('40%');
     this.pnlSelected.height = 'auto';
 
-    const { month, year } = this.initialData;
+    const { date } = this.initialData;
+    const { month, year } = this.currentMonth || this.initialData;
+
     const monthEl = this.monthsMap.get(`${month}-${year}`);
     if (monthEl) this.updateMonthUI(monthEl);
 
-    const date = {
-      date: this.initialDate.getDate(),
-      month: this.initialDate.getMonth() + 1,
-      year: this.initialDate.getFullYear()
-    }
     this.updateOldDate();
-    const dataDate = `${date.date}-${date.month}-${date.year}`;
+    const dataDate = `${date}-${month}-${year}`;
     const target = this.listStack.querySelector(`[data-date="${dataDate}"]`) as VStack;
-    this.updateNewDate(target, date);
-    this.eventSlider.activeSlide = date.date - 1;
+    this.updateNewDate(target, {...this.initialData});
+    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+    this.eventSlider.activeSlide = index;
   }
 
   onSwipeWeek(direction?: 1 | -1) {
     this.viewMode = 'week';
     this.updateDatesHeight('15%');
     this.pnlSelected.height = 'auto';
-    const containerWidth = this.pnlWrapper.offsetWidth;
 
-    const { month, year } = this.initialData;
+    const { month, year } = this.currentMonth || this.initialData;
     let monthEl = this.monthsMap.get(`${month}-${year}`);
     if (!monthEl) return;
-
     this.updateMonthUI(monthEl);
-    const currentMonth = this.currentDate.getMonth() + 1;
-    const currentYear = this.currentDate.getFullYear();
-    const currentDate = this.currentDate.getDate();
-    if (month === currentMonth && year === currentYear) {
-      const elm = this.listStack.querySelector(`[data-date="${currentDate}-${currentMonth}-${currentYear}"]`);
-      const week = elm?.getAttribute('data-week') || 0;
-      if (week) {
-        const startScrollLeft = monthEl.scrollLeft;
-        const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
-        this.animateFn((progress: number) => {
-          monthEl.scrollTo({
-            left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
+    if (!this.isInitialWeek && !direction) {
+      const currentMonth = this.currentDate.getMonth() + 1;
+      const currentYear = this.currentDate.getFullYear();
+      const currentDate = this.currentDate.getDate();
+      if (month === currentMonth && year === currentYear) {
+        const elm = this.listStack.querySelector(`[data-date="${currentDate}-${currentMonth}-${currentYear}"]`);
+        const week = elm?.getAttribute('data-week') || 0;
+        if (week) {
+          const startScrollLeft = monthEl.scrollLeft;
+          const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
+          this.animateFn((progress: number) => {
+            monthEl.scrollTo({
+              left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
+            })
           })
-        })
+        }
+        this.isInitialWeek = true;
       }
     }
 
     if (!direction) return;
 
-    const threshold = containerWidth * 4 * 0.95 - 24;
+    const threshold = this.listStack.offsetWidth * 3;
     const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
     if (outOfMonth) {
+      this.initialDate = new Date(year, month - 1, 1);
       this.onMonthChanged(direction);
-      const { month, year } = this.initialData;
-      const newMonth = this.monthsMap.get(`${month}-${year}`);
-      this.updateMonthUI(newMonth);
+      const { month: newMonth, year: newYear } = this.initialData;
+      const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
       this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
-      newMonth.scrollLeft = 0;
-      this.activeDateWeek(newMonth, 0);
+      this.updateMonthUI(newMonthEl);
+      const factor = direction === 1 ? 0 : 4;
+      newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
+      this.activeDateWeek(newMonthEl, factor);
     } else {
-      const { month, year } = this.initialData;
-      monthEl = this.monthsMap.get(`${month}-${year}`);
       this.onScroll(monthEl, direction, monthEl.offsetWidth);
-      const week = Math.ceil(monthEl.scrollLeft / containerWidth) + direction;
+      const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
       this.activeDateWeek(monthEl, week);
     }
   }
 
   private activeDateWeek(monthEl: Control, week: number) {
-    const { day } = this.initialData;
-    const dateEl = monthEl.children?.[week]?.children?.[day] as Control;
+    const dateEl = monthEl.children?.[week]?.children?.[this.initalDay] as VStack;
     if (dateEl) {
+      this.updateOldDate();
       const dateData = dateEl.getAttribute('data-date');
       const [date, month, year] = dateData.split('-');
       if (date) {
-        const newDate = { date: Number(date), month, year };
-        this.onSelectedDateChanged(newDate);
-        this.eventSlider.activeSlide = newDate.date - 1;
+        this.initialDate = new Date(year, month - 1, Number(date));
+        const { month: currentMonth } = this.currentMonth || this.initialData;
+        const index = this.datesMap.get(`${currentMonth}-${year}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
+        this.eventSlider.activeSlide = index;
+        this.selectedDate = dateEl;
+        dateEl.border = {radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important`};
       }
     }
   }
 
   private updateMonthUI(month: StackLayout) {
     const isWeekMode = this.viewMode === 'week';
+    // if (this.selectedMonth) {
+    //   this.selectedMonth.stack = isWeekMode ? {shrink: '0', grow: '1', basis: 'auto'} : {shrink: '0', grow: '0', basis: 'auto'};
+    // }
     month.direction = isWeekMode ? 'horizontal' : 'vertical';
     month.stack = isWeekMode ? {shrink: '0', grow: '1', basis: 'auto'} : {shrink: '0', grow: '0', basis: 'auto'}
     for (let child of month.children) {
       (child as Control).stack = isWeekMode ? {shrink: '0', grow: '0', basis: 'auto'} : {shrink: '1', grow: '1', basis: 'auto'};
     }
+    this.selectedMonth = month;
   }
 
   private onScroll(parent: Control, direction: 1 | -1, cWidth: number) {
-    const containerWidth = cWidth + 3;
+    const containerWidth = this.listStack.offsetWidth + 2;
     const startScrollLeft = parent.scrollLeft;
-    const targetScrollLeft = parent.scrollLeft + (direction * containerWidth);
+    const additional = direction === -1 ? 2 : 0;
+    const targetScrollLeft = startScrollLeft + (direction * containerWidth) + additional;
     this.animateFn((progress: number) => {
       parent.scrollTo({
         left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress

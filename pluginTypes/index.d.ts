@@ -74,6 +74,7 @@ declare module "@scom/scom-calendar" {
         private pnlDates;
         private pnlSelected;
         private eventSlider;
+        private selectedMonth;
         private datesMap;
         private monthsMap;
         private selectedMap;
@@ -87,6 +88,8 @@ declare module "@scom/scom-calendar" {
         private isVerticalSwiping;
         private isHorizontalSwiping;
         private viewMode;
+        private isInitialWeek;
+        private initalDay;
         private currentMonth;
         private _events;
         onFilter: (data?: any) => void;
@@ -101,7 +104,6 @@ declare module "@scom/scom-calendar" {
         private get calendarData();
         private getDates;
         private daysInMonth;
-        private getEventByStartDate;
         private getEvents;
         private getHoliday;
         setData({ events }: {
