@@ -43,6 +43,7 @@ export default class Module1 extends Module {
                 height="100vh"
                 width={'100vw'}
                 display='block'
+                overflow={'hidden'}
             ></i-scom-calendar>
         </i-panel>
     }
