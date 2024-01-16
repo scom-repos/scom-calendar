@@ -102,6 +102,7 @@ declare module "@scom/scom-calendar" {
         private get monthKey();
         private get datesInMonth();
         private get calendarData();
+        private get isWeekMode();
         private getDates;
         private daysInMonth;
         private getEvents;

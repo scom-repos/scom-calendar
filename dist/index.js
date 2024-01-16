@@ -226,6 +226,9 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             }
             return eventsMap;
         }
+        get isWeekMode() {
+            return this.viewMode === 'week';
+        }
         getDates(month, year) {
             let dates = [];
             const firstDay = new Date(year, month - 1, 1).getDay();
@@ -258,14 +261,6 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         daysInMonth(month, year) {
             return new Date(year, month, 0).getDate();
         }
-        // private getEventByStartDate(item: IDate) {
-        //   return [...this.events].filter(event => {
-        //     const date = moment(event.startDate);
-        //     if (date.get('month') + 1 === item.month && date.get('year') === item.year && date.get('date') === item.date) {
-        //       return true;
-        //     }
-        //   })
-        // }
         getEvents(item) {
             const { year, month, date } = item;
             return [...this.events].filter(event => {
@@ -306,6 +301,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.currentDate = new Date();
             this.filteredData = {};
             this.isInitialWeek = false;
+            this.style.setProperty('--grow', this.isWeekMode ? '1' : '0');
+            this.style.setProperty('--inner-grow', this.isWeekMode ? '0' : '1');
         }
         renderHeader() {
             this.gridHeader.clearInnerHTML();
@@ -325,10 +322,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.updateMonthUI(gridMonth);
                 return;
             }
-            const gridDates = this.$render("i-stack", { direction: this.viewMode === 'month' ? 'vertical' : 'horizontal', width: '100%', stack: this.viewMode === 'month' ? { shrink: '0', grow: '0', basis: 'auto' } : { shrink: '0', grow: '1', basis: 'auto' }, overflow: { x: 'auto', y: 'hidden' }, class: `${index_css_1.swipeStyle} scroll-item`, position: 'relative' });
+            const gridDates = this.$render("i-stack", { direction: this.isWeekMode ? 'horizontal' : 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)', basis: '100%' }, overflow: { x: 'auto', y: 'hidden' }, class: `${index_css_1.swipeStyle} scroll-item`, position: 'relative' });
             gridDates.setAttribute('data-month', this.monthKey);
             for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { grow: `1` }, autoRowSize: 'auto', autoFillInHoles: true, position: 'relative' }));
+                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: '100%' }, autoRowSize: 'auto', autoFillInHoles: true, position: 'relative' }));
             }
             const dates = [...this.datesInMonth];
             for (let i = 0; i < dates.length; i++) {
@@ -476,7 +473,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.updateDatesHeight('40%');
                 this.pnlSelected.height = 'auto';
             }
-            const index = this.datesMap.get(`${date.month}-${date.year}`).findIndex(d => d.date === date.date && d.month === date.month);
+            const { month, year } = this.currentMonth || this.initialData;
+            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
             this.eventSlider.activeSlide = index;
             this.filteredData.date = date;
             if (this.onFilter)
@@ -664,6 +662,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         }
         onSwipeFullMonth(direction) {
             this.viewMode = 'month';
+            this.style.setProperty('--grow', '0');
+            this.style.setProperty('--inner-grow', '1');
             if (direction) {
                 this.onMonthChanged(direction);
                 this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
@@ -679,6 +679,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         }
         onSwipeMonthEvents() {
             this.viewMode = 'month';
+            this.style.setProperty('--grow', '0');
+            this.style.setProperty('--inner-grow', '1');
             this.updateDatesHeight('40%');
             this.pnlSelected.height = 'auto';
             const { date } = this.initialData;
@@ -695,6 +697,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         }
         onSwipeWeek(direction) {
             this.viewMode = 'week';
+            this.style.setProperty('--grow', '1');
+            this.style.setProperty('--inner-grow', '0');
             this.updateDatesHeight('15%');
             this.pnlSelected.height = 'auto';
             const { month, year } = this.currentMonth || this.initialData;
@@ -759,15 +763,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             }
         }
         updateMonthUI(month) {
-            const isWeekMode = this.viewMode === 'week';
-            // if (this.selectedMonth) {
-            //   this.selectedMonth.stack = isWeekMode ? {shrink: '0', grow: '1', basis: 'auto'} : {shrink: '0', grow: '0', basis: 'auto'};
+            month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
+            // for (let child of month.children) {
+            //   (child as Control).stack = this.isWeekMode ? {shrink: '0', grow: '0', basis: 'auto'} : {shrink: '1', grow: '1', basis: 'auto'};
             // }
-            month.direction = isWeekMode ? 'horizontal' : 'vertical';
-            month.stack = isWeekMode ? { shrink: '0', grow: '1', basis: 'auto' } : { shrink: '0', grow: '0', basis: 'auto' };
-            for (let child of month.children) {
-                child.stack = isWeekMode ? { shrink: '0', grow: '0', basis: 'auto' } : { shrink: '1', grow: '1', basis: 'auto' };
-            }
             this.selectedMonth = month;
         }
         onScroll(parent, direction, cWidth) {
