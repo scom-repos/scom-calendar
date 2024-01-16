@@ -382,7 +382,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
             // const columnSpan = spanDays === 0 ? 1 : spanDays;
             const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
-                this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } })));
+                this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 }, textOverflow: 'ellipsis' })));
             return eventEl;
         }
         renderHoliday(holiday, columnIndex) {
@@ -437,10 +437,21 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             }
             return selectedWrap;
         }
+        handleEventClick(data, event) {
+            if (this.onItemClicked)
+                this.onItemClicked(data, event);
+        }
         renderSelectedEvent(event, parent, isLast) {
             const startTime = (0, components_3.moment)(event.startDate).format('HH:mm');
             const endTime = (0, components_3.moment)(event.endDate).format('HH:mm');
-            parent.appendChild(this.$render("i-panel", { border: { bottom: { width: '1px', style: isLast ? 'none' : 'solid', color: Theme.divider } } },
+            let iconAttr = {};
+            if (event.link?.startsWith('https://meet.google.com/')) {
+                iconAttr = { image: { url: assets_1.default.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block' } };
+            }
+            else {
+                iconAttr = { width: '1rem', height: '1rem', name: 'globe' };
+            }
+            parent.appendChild(this.$render("i-panel", { border: { bottom: { width: '1px', style: isLast ? 'none' : 'solid', color: Theme.divider } }, cursor: 'pointer', onClick: (t, e) => this.handleEventClick(event, e) },
                 this.$render("i-hstack", { padding: { top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem' }, gap: '0.25rem', horizontalAlignment: 'space-between' },
                     this.$render("i-hstack", { gap: '0.25rem', stack: { grow: '1' } },
                         this.$render("i-hstack", { stack: { shrink: '0', basis: '2.5rem' } },
@@ -449,7 +460,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                         this.$render("i-vstack", { gap: "0.25rem" },
                             this.$render("i-label", { caption: event.title, font: { size: '1rem', weight: 500 } }),
                             this.$render("i-label", { caption: `${startTime} - ${endTime}`, font: { size: '0.75rem', weight: 500 }, opacity: 0.36 }))),
-                    this.$render("i-icon", { cursor: 'pointer', stack: { shrink: '0' }, image: { url: assets_1.default.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block' }, onClick: () => window.open(event.link, '_blank'), visible: !!event.conferenceId }))));
+                    this.$render("i-icon", { cursor: 'pointer', stack: { shrink: '0' }, onClick: () => window.open(event.link, '_blank'), visible: !!event.link, ...iconAttr }))));
         }
         renderSelectedHoliday(holiday, parent) {
             if (!holiday)
@@ -784,6 +795,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         init() {
             super.init();
             this.onFilter = this.getAttribute('onFilter', true) || this.onFilter;
+            this.onItemClicked = this.getAttribute('onItemClicked', true) || this.onItemClicked;
             const events = this.getAttribute('events', true);
             this.renderHeader();
             this.setData({ events });
