@@ -43,7 +43,7 @@ declare module "@scom/scom-calendar/common/select.css.ts" {
 }
 /// <amd-module name="@scom/scom-calendar/common/select.tsx" />
 declare module "@scom/scom-calendar/common/select.tsx" {
-    import { Module, ControlElement, Container } from '@ijstech/components';
+    import { Module, ControlElement, Container, Control } from '@ijstech/components';
     interface ScomCalendarSelectElement extends ControlElement {
         date?: string;
         onChanged?: (date: string) => void;
@@ -75,6 +75,7 @@ declare module "@scom/scom-calendar/common/select.tsx" {
         private monthList;
         private dateList;
         private newDate;
+        private isAnimating;
         onChanged: (date: string) => void;
         onClose: () => void;
         constructor(parent?: Container, options?: any);
@@ -98,6 +99,8 @@ declare module "@scom/scom-calendar/common/select.tsx" {
         private dragHandler;
         private dragEndHandler;
         private onScroll;
+        _translate(x: number, y: number, parentStack: Control): void;
+        animateFn(destX: number, destY: number, duration: number, parentStack: Control): void;
         _handleMouseDown(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseMove(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseUp(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;

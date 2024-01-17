@@ -6,7 +6,8 @@ import {
   Styles,
   Label,
   Container,
-  VStack
+  VStack,
+  Control
 } from '@ijstech/components'
 import { IDate, IPos } from '../interface';
 import { transitionStyle } from './select.css';
@@ -55,6 +56,7 @@ export class ScomCalendarSelect extends Module {
   private monthList: number[];
   private dateList: number[];
   private newDate: IDate = { date: 0, month: 0, year: 0 };
+  private isAnimating: boolean = false;
 
   onChanged: (date: string) => void;
   onClose: () => void;
@@ -106,9 +108,6 @@ export class ScomCalendarSelect extends Module {
   clear() {
     this.initialDate = new Date();
     this.newDate = {...this.initialData};
-    // this.monthStack.scrollTop = 0;
-    // this.yearStack.scrollTop = 0;
-    // this.dateStack.scrollTop = 0;
   }
 
   private renderUI() {
@@ -319,10 +318,48 @@ export class ScomCalendarSelect extends Module {
     const newEl = mapEl.get(newValue);
     if (newEl) newEl.opacity = 1;
     const index = listData.indexOf(newValue);
-    parentStack.scrollTop = index * itemHeight - itemHeight;
-    parentStack.scrollIntoView({ inline: 'center' });
+    const y = index * itemHeight - itemHeight;
+    this.animateFn(0, y, 300, parentStack);
     this.newDate[type] = newValue;
   }
+
+  _translate(x: number, y: number, parentStack: Control): void {
+    parentStack.scrollTop  = y;
+  }
+  
+  animateFn(destX: number, destY: number, duration: number, parentStack: Control): void {
+		var that = this,
+			startX = this.pos1.x,
+			startY = this.pos2.y,
+			startTime = new Date().getTime(),
+			destTime = startTime + duration;
+
+    const easingFn = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+		function step () {
+			let now = new Date().getTime();
+		  let newX;
+      let newY;
+      let easing;
+
+			if ( now >= destTime ) {
+				that.isAnimating = false;
+				that._translate(destX, destY, parentStack);
+				return;
+			}
+
+			now = ( now - startTime ) / duration;
+			easing = easingFn(now);
+			newX = ( destX - startX ) * easing + startX;
+			newY = ( destY - startY ) * easing + startY;
+			that._translate(newX, newY, parentStack);
+
+			if ( that.isAnimating ) {
+				window.requestAnimationFrame(step);
+			}
+		}
+		this.isAnimating = true;
+		step();
+	}
 
   _handleMouseDown(event: PointerEvent|MouseEvent|TouchEvent, stopPropagation?: boolean): boolean {
     const result = super._handleMouseDown(event, stopPropagation);
