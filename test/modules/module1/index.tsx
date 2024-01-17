@@ -9,25 +9,27 @@ export default class Module1 extends Module {
         this._events = [
             {
                 title: 'Event 1',
-                startDate: '2024-01-10T23:00:00.000Z',
-                endDate: '2024-01-14T02:00:00.000Z',
+                startDate: 1704927600000,
+                endDate: 1705197600000,
             },
             {
                 title: 'Event 2',
-                startDate: '2024-01-10T04:00:00.000Z',
-                endDate: '2024-01-14T04:00:00.000Z',
+                startDate: 1704859200000,
+                endDate: 1705204800000,
             },
             {
                 title: 'Event 3',
-                startDate: '2024-01-15T09:00:00.000Z',
-                endDate: '2024-01-15T13:00:00.000Z',
+                startDate: 1705309200000,
+                endDate: 1705323600000,
+                data: {
+                    test: '123'
+                }
             },
             {
                 title: 'Meeting 1',
-                startDate: '2024-01-15T09:00:00.000Z',
-                endDate: '2024-01-15T13:00:00.000Z',
-                link: 'https://meet.google.com/meeting_id',
-                "conferenceId": "meeting_id"
+                startDate: 1705309200000,
+                endDate: 1705323600000,
+                link: 'https://meet.google.com/meeting_id'
             }
         ]
     }

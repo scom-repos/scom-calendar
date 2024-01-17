@@ -33,9 +33,13 @@ const defaultEventColor = Theme.colors.primary.main;
 const currentColor = Theme.colors.secondary.main;
 // DefaultColors
 
+type callbackType = (data: IEvent, event: MouseEvent) => void;
+
+
 interface ScomCalendarElement extends ControlElement {
   events?: IEvent[];
   onFilter?: (data?: any) => void;
+  onItemClicked?: callbackType;
 }
 
 declare global {
@@ -82,6 +86,7 @@ export default class ScomCalendar extends Module {
   private _events: IEvent[] = [];
 
   onFilter: (data?: any) => void;
+  onItemClicked: callbackType;
 
   constructor(parent?: Container, options?: any) {
     super(parent, options);
@@ -376,6 +381,7 @@ export default class ScomCalendar extends Module {
           opacity={'var(--event-opacity, 1)'}
           lineHeight={'1rem'}
           font={{size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500}}
+          textOverflow='ellipsis'
         ></i-label>
       </i-vstack>
     ) as Control
@@ -479,12 +485,24 @@ export default class ScomCalendar extends Module {
     return selectedWrap;
   }
 
+  private handleEventClick(data: IEvent, event?: MouseEvent) {
+    if (this.onItemClicked) this.onItemClicked(data, event);
+  }
+
   private renderSelectedEvent(event: IEvent, parent: Control, isLast: boolean) {
     const startTime = moment(event.startDate).format('HH:mm');
     const endTime = moment(event.endDate).format('HH:mm');
+    let iconAttr = {};
+    if (event.link?.startsWith('https://meet.google.com/')) {
+      iconAttr = { image: { url: assets.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block' } };
+    } else {
+      iconAttr = { width: '1rem', height: '1rem', name: 'globe' }
+    }
     parent.appendChild(
       <i-panel
         border={{bottom: {width: '1px', style: isLast ? 'none' :'solid', color: Theme.divider}}}
+        cursor='pointer'
+        onClick={(t, e) => this.handleEventClick(event, e)}
       >
         <i-hstack
           padding={{top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem'}}
@@ -510,9 +528,9 @@ export default class ScomCalendar extends Module {
           <i-icon
             cursor='pointer'
             stack={{shrink: '0'}}
-            image={{url: assets.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block'}}
             onClick={() => window.open(event.link, '_blank')}
-            visible={!!event.conferenceId}
+            visible={!!event.link}
+            {...iconAttr}
           ></i-icon>
         </i-hstack>
       </i-panel>
@@ -919,6 +937,7 @@ export default class ScomCalendar extends Module {
   init() {
     super.init()
     this.onFilter = this.getAttribute('onFilter', true) || this.onFilter;
+    this.onItemClicked = this.getAttribute('onItemClicked', true) || this.onItemClicked;
     const events = this.getAttribute('events', true);
     this.renderHeader();
     this.setData({ events });

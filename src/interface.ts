@@ -6,15 +6,14 @@ export interface IDate {
 }
 
 export interface IEvent {
-  type?: string;
   title: string;
-  startDate: string;
-  endDate: string;
+  startDate: number;
+  endDate: number;
   color?: string;
   location?: string;
   description?: string;
   link?: string;
-  conferenceId?: string;
+  data?: any;
 }
 
 export interface ICalendar {

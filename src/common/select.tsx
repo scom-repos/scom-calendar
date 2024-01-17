@@ -106,9 +106,9 @@ export class ScomCalendarSelect extends Module {
   clear() {
     this.initialDate = new Date();
     this.newDate = {...this.initialData};
-    this.monthStack.style.transform = '';
-    this.yearStack.style.transform = '';
-    this.dateStack.style.transform = '';
+    // this.monthStack.scrollTop = 0;
+    // this.yearStack.scrollTop = 0;
+    // this.dateStack.scrollTop = 0;
   }
 
   private renderUI() {
@@ -319,8 +319,8 @@ export class ScomCalendarSelect extends Module {
     const newEl = mapEl.get(newValue);
     if (newEl) newEl.opacity = 1;
     const index = listData.indexOf(newValue);
-    const translateY = -(index * itemHeight - itemHeight);
-    parentStack.style.transform = `translateY(${translateY}px)`;
+    parentStack.scrollTop = index * itemHeight - itemHeight;
+    parentStack.scrollIntoView({ inline: 'center' });
     this.newDate[type] = newValue;
   }
 
@@ -402,7 +402,9 @@ export class ScomCalendarSelect extends Module {
                 verticalAlignment='start'
                 horizontalAlignment='center'
                 position='relative'
+                overflow={{x: 'hidden', y: 'auto'}}
                 width={'100%'} height={'100%'}
+                cursor='pointer'
                 class="scroll-container date-container"
               ></i-vstack>
             </i-panel>
@@ -415,7 +417,9 @@ export class ScomCalendarSelect extends Module {
                 verticalAlignment='start'
                 horizontalAlignment='center'
                 position='relative'
+                overflow={{x: 'hidden', y: 'auto'}}
                 width={'100%'} height={'100%'}
+                cursor='pointer'
                 class="scroll-container month-container"
               ></i-vstack>
             </i-panel>
@@ -428,7 +432,9 @@ export class ScomCalendarSelect extends Module {
                 verticalAlignment='start'
                 horizontalAlignment='center'
                 position='relative'
+                overflow={{x: 'hidden', y: 'auto'}}
                 width={'100%'} height={'100%'}
+                cursor='pointer'
                 class="scroll-container year-container"
               ></i-vstack>
             </i-panel>
