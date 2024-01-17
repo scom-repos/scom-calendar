@@ -19,3 +19,8 @@ export interface IEvent {
 export interface ICalendar {
   events?: IEvent[];
 }
+
+export interface IPos {
+  x: number;
+  y: number;
+}
