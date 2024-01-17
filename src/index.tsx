@@ -919,6 +919,7 @@ export default class ScomCalendar extends Module {
         onChanged: (date: string) => {
           this.selectEl.closeModal();
           this.initialDate = new Date(date);
+          this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
           this.clear();
           this.renderUI();
         }
