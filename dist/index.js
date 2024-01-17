@@ -140,6 +140,7 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             this.pos1 = { x: 0, y: 0 };
             this.pos2 = { x: 0, y: 0 };
             this.newDate = { date: 0, month: 0, year: 0 };
+            this.isAnimating = false;
             this.onCloseSelect = this.onCloseSelect.bind(this);
             this.onChangedSelect = this.onChangedSelect.bind(this);
         }
@@ -178,9 +179,6 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         clear() {
             this.initialDate = new Date();
             this.newDate = { ...this.initialData };
-            // this.monthStack.scrollTop = 0;
-            // this.yearStack.scrollTop = 0;
-            // this.dateStack.scrollTop = 0;
         }
         renderUI() {
             if (this.date) {
@@ -376,9 +374,37 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             if (newEl)
                 newEl.opacity = 1;
             const index = listData.indexOf(newValue);
-            parentStack.scrollTop = index * itemHeight - itemHeight;
-            parentStack.scrollIntoView({ inline: 'center' });
+            const y = index * itemHeight - itemHeight;
+            this.animateFn(0, y, 300, parentStack);
             this.newDate[type] = newValue;
+        }
+        _translate(x, y, parentStack) {
+            parentStack.scrollTop = y;
+        }
+        animateFn(destX, destY, duration, parentStack) {
+            var that = this, startX = this.pos1.x, startY = this.pos2.y, startTime = new Date().getTime(), destTime = startTime + duration;
+            const easingFn = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            function step() {
+                let now = new Date().getTime();
+                let newX;
+                let newY;
+                let easing;
+                if (now >= destTime) {
+                    that.isAnimating = false;
+                    that._translate(destX, destY, parentStack);
+                    return;
+                }
+                now = (now - startTime) / duration;
+                easing = easingFn(now);
+                newX = (destX - startX) * easing + startX;
+                newY = (destY - startY) * easing + startY;
+                that._translate(newX, newY, parentStack);
+                if (that.isAnimating) {
+                    window.requestAnimationFrame(step);
+                }
+            }
+            this.isAnimating = true;
+            step();
         }
         _handleMouseDown(event, stopPropagation) {
             const result = super._handleMouseDown(event, stopPropagation);
@@ -1152,6 +1178,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                     onChanged: (date) => {
                         this.selectEl.closeModal();
                         this.initialDate = new Date(date);
+                        this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
                         this.clear();
                         this.renderUI();
                     }
