@@ -27,3 +27,11 @@ export const monthListStyle = Styles.style({
     }
   }
 })
+
+export const eventSliderStyle = Styles.style({
+  $nest: {
+    "> div": {
+      height: '100%'
+    }
+  }
+})

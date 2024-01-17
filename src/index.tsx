@@ -21,7 +21,7 @@ import { IDate, IEvent, IPos } from './interface'
 import holidayList from './data/holidays.json';
 import { ScomCalendarSelect } from './common/index';
 import './index.css'
-import { monthListStyle, swipeStyle, transitionStyle } from './index.css';
+import { eventSliderStyle, monthListStyle, swipeStyle, transitionStyle } from './index.css';
 import assets from './assets';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -439,7 +439,14 @@ export default class ScomCalendar extends Module {
     const selectedPanel = this.selectedMap.get(dateKey);
     if (selectedPanel) return;
 
-    const selectedWrap = <i-vstack width={'100%'} padding={{top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem'}}></i-vstack>
+    const selectedWrap = (
+      <i-vstack
+        width={'100%'}
+        height='100%'
+        overflow={{ y: 'auto' }}
+        padding={{top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem'}}
+      ></i-vstack>
+    )
     selectedWrap.setAttribute('data-slider-date', dateKey);
     const caption = `${date} ${monthName}`;
     selectedWrap.append(
@@ -450,6 +457,7 @@ export default class ScomCalendar extends Module {
         margin={{top: '1rem'}}
         width={'100%'}
         overflow={'hidden'}
+        stack={{ shrink: '0' }}
       >
         <i-hstack
           gap={'0.5rem'}
@@ -999,6 +1007,7 @@ export default class ScomCalendar extends Module {
           >
             <i-carousel-slider
               id="eventSlider"
+              class={eventSliderStyle}
               swipe={true}
               width={'100%'} height={'100%'}
               indicators={false}

@@ -484,7 +484,7 @@ define("@scom/scom-calendar/common/index.ts", ["require", "exports", "@scom/scom
 define("@scom/scom-calendar/index.css.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.monthListStyle = exports.swipeStyle = exports.transitionStyle = void 0;
+    exports.eventSliderStyle = exports.monthListStyle = exports.swipeStyle = exports.transitionStyle = void 0;
     const Theme = components_3.Styles.Theme.ThemeVars;
     exports.transitionStyle = components_3.Styles.style({
         transition: 'height 0.3s ease'
@@ -507,6 +507,13 @@ define("@scom/scom-calendar/index.css.ts", ["require", "exports", "@ijstech/comp
         $nest: {
             '&:not(.--full) > .scroll-item > .scroll-item': {
                 gridTemplateRows: 55
+            }
+        }
+    });
+    exports.eventSliderStyle = components_3.Styles.style({
+        $nest: {
+            "> div": {
+                height: '100%'
             }
         }
     });
@@ -798,10 +805,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const selectedPanel = this.selectedMap.get(dateKey);
             if (selectedPanel)
                 return;
-            const selectedWrap = this.$render("i-vstack", { width: '100%', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' } });
+            const selectedWrap = (this.$render("i-vstack", { width: '100%', height: '100%', overflow: { y: 'auto' }, padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' } }));
             selectedWrap.setAttribute('data-slider-date', dateKey);
             const caption = `${date} ${monthName}`;
-            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between', margin: { top: '1rem' }, width: '100%', overflow: 'hidden' },
+            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between', margin: { top: '1rem' }, width: '100%', overflow: 'hidden', stack: { shrink: '0' } },
                 this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between' },
                     this.$render("i-label", { caption: caption, font: { size: '0.75rem', weight: 600 } })),
                 this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'smile' })));
@@ -1224,7 +1231,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                         this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                         this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: `${index_css_1.swipeStyle} ${index_css_1.monthListStyle}`, stack: { grow: '1' } })),
                     this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: '0' }, minHeight: 0, height: 0, overflow: 'hidden' },
-                        this.$render("i-carousel-slider", { id: "eventSlider", swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))),
+                        this.$render("i-carousel-slider", { id: "eventSlider", class: index_css_1.eventSliderStyle, swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))),
                 this.$render("i-panel", { position: 'fixed', bottom: "0px", left: "0px", zIndex: 999, width: '100%', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.5rem', right: '0.5rem' }, visible: false },
                     this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between', gap: '1rem' },
                         this.$render("i-input", { id: "inputAdd", placeholder: "Add event on", border: { radius: '9999px', width: '1px', style: 'solid', color: Theme.divider }, height: '3.125rem', width: '100%', font: { size: '1rem' }, padding: { top: '0.25rem', bottom: '0.25rem', left: '1.25rem', right: '1.25rem' }, boxShadow: 'none' }),
