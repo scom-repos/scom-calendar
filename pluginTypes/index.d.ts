@@ -113,6 +113,7 @@ declare module "@scom/scom-calendar/common/index.ts" {
 declare module "@scom/scom-calendar/index.css.ts" {
     export const transitionStyle: string;
     export const swipeStyle: string;
+    export const monthListStyle: string;
 }
 /// <amd-module name="@scom/scom-calendar/assets.ts" />
 declare module "@scom/scom-calendar/assets.ts" {
