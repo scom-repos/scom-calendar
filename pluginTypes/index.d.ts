@@ -7,15 +7,14 @@ declare module "@scom/scom-calendar/interface.ts" {
         day?: number;
     }
     export interface IEvent {
-        type?: string;
         title: string;
-        startDate: string;
-        endDate: string;
+        startDate: number;
+        endDate: number;
         color?: string;
         location?: string;
         description?: string;
         link?: string;
-        conferenceId?: string;
+        data?: any;
     }
     export interface ICalendar {
         events?: IEvent[];
@@ -52,9 +51,11 @@ declare module "@scom/scom-calendar" {
     import { Module, Container, ControlElement } from '@ijstech/components';
     import { IEvent } from "@scom/scom-calendar/interface.ts";
     import "@scom/scom-calendar/index.css.ts";
+    type callbackType = (data: IEvent, event: MouseEvent) => void;
     interface ScomCalendarElement extends ControlElement {
         events?: IEvent[];
         onFilter?: (data?: any) => void;
+        onItemClicked?: callbackType;
     }
     global {
         namespace JSX {
@@ -93,6 +94,7 @@ declare module "@scom/scom-calendar" {
         private currentMonth;
         private _events;
         onFilter: (data?: any) => void;
+        onItemClicked: callbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarElement, parent?: Container): Promise<ScomCalendar>;
         get events(): IEvent[];
@@ -117,6 +119,7 @@ declare module "@scom/scom-calendar" {
         private renderHoliday;
         private renderEventSlider;
         private renderSliderItem;
+        private handleEventClick;
         private renderSelectedEvent;
         private renderSelectedHoliday;
         private onDateClick;
