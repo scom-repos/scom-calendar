@@ -21,7 +21,7 @@ import { IDate, IEvent, IPos } from './interface'
 import holidayList from './data/holidays.json';
 import { ScomCalendarSelect } from './common/index';
 import './index.css'
-import { swipeStyle, transitionStyle } from './index.css';
+import { eventSliderStyle, monthListStyle, swipeStyle, transitionStyle } from './index.css';
 import assets from './assets';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -439,7 +439,14 @@ export default class ScomCalendar extends Module {
     const selectedPanel = this.selectedMap.get(dateKey);
     if (selectedPanel) return;
 
-    const selectedWrap = <i-vstack width={'100%'} padding={{top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem'}}></i-vstack>
+    const selectedWrap = (
+      <i-vstack
+        width={'100%'}
+        height='100%'
+        overflow={{ y: 'auto' }}
+        padding={{top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem'}}
+      ></i-vstack>
+    )
     selectedWrap.setAttribute('data-slider-date', dateKey);
     const caption = `${date} ${monthName}`;
     selectedWrap.append(
@@ -450,6 +457,7 @@ export default class ScomCalendar extends Module {
         margin={{top: '1rem'}}
         width={'100%'}
         overflow={'hidden'}
+        stack={{ shrink: '0' }}
       >
         <i-hstack
           gap={'0.5rem'}
@@ -581,7 +589,7 @@ export default class ScomCalendar extends Module {
     this.initalDay = this.initialDate.getDay();
     this.updateNewDate(target, date);
     if (this.viewMode === 'month') {
-      this.updateDatesHeight('40%');
+      this.updateDatesHeight('345px');
       this.pnlSelected.height = 'auto';
     }
     const { month, year } = this.currentMonth || this.initialData;
@@ -610,7 +618,12 @@ export default class ScomCalendar extends Module {
 
   private updateDatesHeight(height: string) {
     this.pnlDates.height = height;
-    let opacity = height === '40%' || height === '15%' ? '0' : '1';
+    if (height === '100%') {
+      this.listStack.classList.add('--full');
+    } else {
+      this.listStack.classList.remove('--full');
+    }
+    let opacity = height === '345px' || height === '125px' ? '0' : '1';
     this.style.setProperty('--event-opacity', opacity);
     this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
   }
@@ -804,7 +817,7 @@ export default class ScomCalendar extends Module {
     this.viewMode = 'month';
     this.style.setProperty('--grow', '0');
     this.style.setProperty('--inner-grow', '1');
-    this.updateDatesHeight('40%');
+    this.updateDatesHeight('345px');
     this.pnlSelected.height = 'auto';
 
     const { date } = this.initialData;
@@ -825,7 +838,7 @@ export default class ScomCalendar extends Module {
     this.viewMode = 'week';
     this.style.setProperty('--grow', '1');
     this.style.setProperty('--inner-grow', '0');
-    this.updateDatesHeight('15%');
+    this.updateDatesHeight('125px');
     this.pnlSelected.height = 'auto';
 
     const { month, year } = this.currentMonth || this.initialData;
@@ -982,18 +995,19 @@ export default class ScomCalendar extends Module {
               id="listStack"
               overflow={{x: 'auto', y: 'hidden'}}
               minHeight={'1.875rem'}
-              class={swipeStyle}
+              class={`${swipeStyle} ${monthListStyle}`}
               stack={{grow: '1'}}
             ></i-hstack>
           </i-vstack>
           <i-panel
             id="pnlSelected"
-            stack={{ grow: '1', shrink: '1', basis: 'auto'}}
+            stack={{ grow: '1', shrink: '1', basis: '0'}}
             minHeight={0} height={0}
             overflow={'hidden'}
           >
             <i-carousel-slider
               id="eventSlider"
+              class={eventSliderStyle}
               swipe={true}
               width={'100%'} height={'100%'}
               indicators={false}

@@ -19,3 +19,19 @@ export const swipeStyle = Styles.style({
     },
   }
 })
+
+export const monthListStyle = Styles.style({
+  $nest: {
+    '&:not(.--full) > .scroll-item > .scroll-item': {
+      gridTemplateRows: 55
+    }
+  }
+})
+
+export const eventSliderStyle = Styles.style({
+  $nest: {
+    "> div": {
+      height: '100%'
+    }
+  }
+})
