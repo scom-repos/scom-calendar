@@ -171,7 +171,6 @@ declare module "@scom/scom-calendar" {
         private isVerticalSwiping;
         private isHorizontalSwiping;
         private viewMode;
-        private isInitialWeek;
         private initalDay;
         private currentMonth;
         private _events;

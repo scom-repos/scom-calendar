@@ -79,7 +79,6 @@ export default class ScomCalendar extends Module {
   private isVerticalSwiping: boolean = false;
   private isHorizontalSwiping: boolean = false;
   private viewMode: 'month' | 'week' = 'month';
-  private isInitialWeek: boolean = false;
   private initalDay: number = 0;
   private currentMonth: { month: number, year: number };
 
@@ -236,7 +235,6 @@ export default class ScomCalendar extends Module {
     this.initalDay = this.initialDate.getDay();
     this.currentDate = new Date();
     this.filteredData = {};
-    this.isInitialWeek = false;
     this.style.setProperty('--grow', this.isWeekMode ? '1' : '0');
     this.style.setProperty('--inner-grow', this.isWeekMode ? '0' : '1');
   }
@@ -845,13 +843,9 @@ export default class ScomCalendar extends Module {
     let monthEl = this.monthsMap.get(`${month}-${year}`);
     if (!monthEl) return;
     this.updateMonthUI(monthEl);
-    if (!this.isInitialWeek && !direction) {
-      const currentMonth = this.currentDate.getMonth() + 1;
-      const currentYear = this.currentDate.getFullYear();
-      const currentDate = this.currentDate.getDate();
-      if (month === currentMonth && year === currentYear) {
-        const elm = this.listStack.querySelector(`[data-date="${currentDate}-${currentMonth}-${currentYear}"]`);
-        const week = elm?.getAttribute('data-week') || 0;
+    if (!direction) {
+      if (this.selectedDate) {
+        const week = this.selectedDate.getAttribute('data-week') || 0;
         if (week) {
           const startScrollLeft = monthEl.scrollLeft;
           const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
@@ -861,11 +855,9 @@ export default class ScomCalendar extends Module {
             })
           })
         }
-        this.isInitialWeek = true;
       }
+      return;
     }
-
-    if (!direction) return;
 
     const threshold = this.listStack.offsetWidth * 3;
     const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
