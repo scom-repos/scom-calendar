@@ -43,7 +43,7 @@ declare module "@scom/scom-calendar/common/select.css.ts" {
 }
 /// <amd-module name="@scom/scom-calendar/common/select.tsx" />
 declare module "@scom/scom-calendar/common/select.tsx" {
-    import { Module, ControlElement, Container, Control } from '@ijstech/components';
+    import { Module, ControlElement, Container } from '@ijstech/components';
     interface ScomCalendarSelectElement extends ControlElement {
         date?: string;
         onChanged?: (date: string) => void;
@@ -64,26 +64,32 @@ declare module "@scom/scom-calendar/common/select.tsx" {
         private dateStack;
         private yearStack;
         private monthStack;
+        private pnlSelect;
         private yearMap;
         private monthMap;
         private dateMap;
         private initialDate;
+        private initialYear;
         private _data;
         private pos1;
         private pos2;
+        private startX;
+        private startY;
         private yearList;
         private monthList;
         private dateList;
         private newDate;
         private isAnimating;
+        private threshold;
+        private isScrolling;
         onChanged: (date: string) => void;
         onClose: () => void;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarSelectElement, parent?: Container): Promise<ScomCalendarSelect>;
         get date(): string;
         set date(value: string);
-        private get daysInMonth();
         private get initialData();
+        private get daysInMonth();
         setData(data: ISelect): void;
         clear(): void;
         private renderUI;
@@ -97,10 +103,15 @@ declare module "@scom/scom-calendar/common/select.tsx" {
         private onChangedSelect;
         private dragStartHandler;
         private dragHandler;
+        private findNearestChild;
         private dragEndHandler;
+        private getParentType;
         private onScroll;
-        _translate(x: number, y: number, parentStack: Control): void;
-        animateFn(destX: number, destY: number, duration: number, parentStack: Control): void;
+        private onRefresh;
+        private _translate;
+        private animateFn;
+        private updateList;
+        private getTransform;
         _handleMouseDown(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseMove(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseUp(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;

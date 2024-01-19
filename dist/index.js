@@ -112,7 +112,7 @@ define("@scom/scom-calendar/common/select.css.ts", ["require", "exports", "@ijst
     exports.transitionStyle = components_1.Styles.style({
         $nest: {
             '.scroll-container': {
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                // transition: 'transform .3s cubic-bezier(0.19, 1, 0.22, 1) 0s',
                 $nest: {
                     '&::-webkit-scrollbar': {
                         height: 0,
@@ -139,8 +139,15 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             this.dateMap = new Map();
             this.pos1 = { x: 0, y: 0 };
             this.pos2 = { x: 0, y: 0 };
+            this.startX = 0;
+            this.startY = 0;
+            this.yearList = [];
+            this.monthList = [];
+            this.dateList = [];
             this.newDate = { date: 0, month: 0, year: 0 };
             this.isAnimating = false;
+            this.threshold = 10;
+            this.isScrolling = false;
             this.onCloseSelect = this.onCloseSelect.bind(this);
             this.onChangedSelect = this.onChangedSelect.bind(this);
         }
@@ -155,10 +162,6 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         set date(value) {
             this._data.date = value;
         }
-        get daysInMonth() {
-            const { month, year } = this.initialData;
-            return new Date(year, month, 0).getDate();
-        }
         get initialData() {
             const month = this.initialDate.getMonth() + 1;
             const year = this.initialDate.getFullYear();
@@ -171,6 +174,10 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                 day
             };
         }
+        get daysInMonth() {
+            const { month, year } = this.newDate;
+            return new Date(year, month, 0).getDate();
+        }
         setData(data) {
             this._data = data;
             this.clear();
@@ -179,6 +186,9 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         clear() {
             this.initialDate = new Date();
             this.newDate = { ...this.initialData };
+            this.dateStack.style.transform = '';
+            this.yearStack.style.transform = '';
+            this.monthStack.style.transform = '';
         }
         renderUI() {
             if (this.date) {
@@ -187,76 +197,103 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                 this.lbDate.caption = `${this.initialDate.getFullYear()} ${monthName}`;
                 this.newDate = { ...this.initialData };
             }
+            this.initialYear = this.initialDate.getFullYear();
             this.renderCurrent();
         }
         renderDateList() {
             this.dateStack.clearInnerHTML();
             this.dateMap = new Map();
-            const { date, year, month } = this.initialData;
-            const previousDaysInMonth = new Date(year, month - 1, 0).getDate();
-            const first = date === 1 ? previousDaysInMonth : date - 1;
-            const last = date === this.daysInMonth ? 1 : date + 1;
-            this.dateList = [first, date, last];
-            for (let d of this.dateList) {
-                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${d}`, font: font, opacity: d === date ? 1 : 0.5, lineHeight: lineHeight });
-                lb.setAttribute('data-date', `${d}`);
-                this.dateStack.appendChild(lb);
-                this.dateMap.set(d, lb);
+            const { date } = this.initialData;
+            this.dateList = [date];
+            let prevValue = date;
+            let nextValue = date;
+            for (let i = 0; i < 5; i++) {
+                const newPrev = this.getPrev('date', prevValue);
+                prevValue = newPrev;
+                this.dateList.unshift(newPrev);
+                const newNext = this.getNext('date', nextValue);
+                nextValue = newNext;
+                this.dateList.push(newNext);
             }
+            for (let i of this.dateList) {
+                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === date ? 1 : 0.5, lineHeight: lineHeight });
+                lb.setAttribute('data-date', `${i}`);
+                this.dateStack.appendChild(lb);
+                this.dateMap.set(i, lb);
+            }
+            this._translate(0, -4 * itemHeight, this.dateStack);
         }
         renderMonthList() {
             this.monthStack.clearInnerHTML();
             this.monthMap = new Map();
             const { month } = this.initialData;
-            const first = month === 1 ? 12 : month - 1;
-            const last = month === 12 ? 1 : month + 1;
-            this.monthList = [first, month, last];
-            for (let m of this.monthList) {
-                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${m}`, font: font, opacity: m === month ? 1 : 0.5, lineHeight: lineHeight });
-                lb.setAttribute('data-month', `${m}`);
-                this.monthStack.appendChild(lb);
-                this.monthMap.set(m, lb);
+            let prevValue = month;
+            let nextValue = month;
+            this.monthList = [month];
+            for (let i = 0; i < 5; i++) {
+                const newPrev = this.getPrev('month', prevValue);
+                prevValue = newPrev;
+                this.monthList.unshift(newPrev);
+                const newNext = this.getNext('month', nextValue);
+                nextValue = newNext;
+                this.monthList.push(newNext);
             }
+            for (let i of this.monthList) {
+                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === month ? 1 : 0.5, lineHeight: lineHeight });
+                lb.setAttribute('data-month', `${i}`);
+                this.monthStack.appendChild(lb);
+                this.monthMap.set(i, lb);
+            }
+            this._translate(0, -4 * itemHeight, this.monthStack);
         }
         renderYearList() {
             this.yearStack.clearInnerHTML();
             this.yearMap = new Map();
             const { year } = this.initialData;
-            this.yearList = [year - 1, year, year + 1];
-            for (let y of this.yearList) {
-                const lbYear = this.$render("i-label", { caption: `${y}`, font: font, lineHeight: lineHeight, opacity: y === year ? 1 : 0.5 });
-                lbYear.setAttribute('data-year', `${y}`);
-                this.yearStack.appendChild(lbYear);
-                this.yearMap.set(y, lbYear);
+            this.yearList = [year];
+            let prevValue = year;
+            let nextValue = year;
+            for (let i = 0; i < 5; i++) {
+                const newPrev = this.getPrev('year', prevValue);
+                prevValue = newPrev;
+                this.yearList.unshift(newPrev);
+                const newNext = this.getNext('year', nextValue);
+                nextValue = newNext;
+                this.yearList.push(newNext);
             }
+            for (let i of this.yearList) {
+                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === year ? 1 : 0.5, lineHeight: lineHeight });
+                lb.setAttribute('data-year', `${i}`);
+                this.yearStack.appendChild(lb);
+                this.yearMap.set(i, lb);
+            }
+            this._translate(0, -4 * itemHeight, this.yearStack);
         }
         getPrev(type, value) {
             let result = 0;
             if (type === 'date') {
-                const { year, month } = this.newDate;
-                const previousDaysInMonth = new Date(year, month - 1, 0).getDate();
-                result = value === 1 ? previousDaysInMonth : value - 1;
+                result = value === 1 ? this.daysInMonth : value - 1;
             }
             else if (type === 'month') {
                 result = value === 1 ? 12 : value - 1;
             }
             else {
-                result = value - 1;
+                if (value > this.initialYear - 20)
+                    result = value - 1;
             }
             return result;
         }
         getNext(type, value) {
             let result = 0;
             if (type === 'date') {
-                // const { year, month }  = this.newDate;
-                // const nextDaysInMonth = new Date(year, month + 1, 0).getDate();
                 result = value === this.daysInMonth ? 1 : value + 1;
             }
             else if (type === 'month') {
                 result = value === 12 ? 1 : value + 1;
             }
             else {
-                result = value + 1;
+                if (value < this.initialYear + 20)
+                    result = value + 1;
             }
             return result;
         }
@@ -272,7 +309,6 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         onChangedSelect() {
             const { year, month, date } = this.newDate;
             const newDate = new Date(year, month - 1, date);
-            console.log(newDate);
             if (this.onChanged)
                 this.onChanged(newDate.toISOString());
         }
@@ -291,33 +327,87 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                 };
             }
             this.pos2 = { x: 0, y: 0 };
+            this.startY = this.pos1.y;
+            this.isScrolling = true;
         }
         dragHandler(event) {
-            event.preventDefault();
+            let deltaY = 0;
             if (event instanceof TouchEvent) {
                 this.pos2 = {
                     x: this.pos1.x - event.touches[0].pageX,
                     y: this.pos1.y - event.touches[0].pageY
                 };
+                deltaY = event.touches[0].pageY - this.startY;
+                this.startY = event.touches[0].pageY;
+                this.startX = event.touches[0].pageX;
             }
             else {
                 this.pos2 = {
                     x: this.pos1.x - event.clientX,
                     y: this.pos1.y - event.clientY,
                 };
+                deltaY = event.clientY - this.startY;
+                this.startY = event.clientY;
+                this.startX = event.clientX;
+            }
+            const scroller = this.findNearestChild(this.startX, this.startY);
+            const parentStack = scroller ? scroller.children[0] : null;
+            if (parentStack) {
+                const type = this.getParentType(parentStack);
+                const distance = Math.abs(deltaY / itemHeight);
+                if (distance > 1)
+                    this.updateList(type, deltaY > 0 ? 1 : -1, distance);
+                const { x, y } = this.getTransform(parentStack);
+                this._translate(x, y + deltaY, parentStack);
+            }
+            else {
+                event.preventDefault();
+                return false;
             }
         }
+        findNearestChild(x, y) {
+            for (let child of this.pnlSelect.children) {
+                const c = child;
+                const { left, top } = child.getBoundingClientRect();
+                if (x >= left && x <= left + c.offsetWidth && y >= top && y <= top + c.offsetHeight) {
+                    return child;
+                }
+            }
+            return null;
+        }
         dragEndHandler(event) {
-            const verticalThreshold = 10;
-            let direction = 1;
-            if (this.pos2.y < -verticalThreshold) {
-                direction = -1;
+            this.isScrolling = false;
+            let clientX = 0;
+            let clientY = 0;
+            if (event instanceof TouchEvent) {
+                clientY = event.touches[0].pageY;
+                clientX = event.touches[0].pageX;
             }
-            else if (this.pos2.y > verticalThreshold) {
-                direction = 1;
+            else {
+                clientY = event.clientY;
+                clientX = event.clientX;
             }
-            const target = event.target;
-            const parentStack = target.closest('.scroll-container');
+            const scroller = this.findNearestChild(clientX, clientY);
+            const parentStack = scroller ? scroller.children[0] : null;
+            const type = this.getParentType(parentStack);
+            if (type) {
+                if (this.pos2.y < -this.threshold) {
+                    this.onScroll(type, -1);
+                }
+                else if (this.pos2.y > this.threshold) {
+                    this.onScroll(type, 1);
+                }
+                else {
+                    this.onRefresh(type);
+                }
+            }
+            else {
+                this.onRefresh('date');
+                this.onRefresh('month');
+                this.onRefresh('year');
+            }
+        }
+        getParentType(parentStack) {
             let type;
             switch (parentStack?.id) {
                 case 'dateStack':
@@ -330,75 +420,84 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                     type = 'year';
                     break;
             }
-            if (type)
-                this.onScroll(type, direction);
+            return type;
         }
         onScroll(type, direction) {
             const mapEl = this[`${type}Map`];
             const parentStack = this[`${type}Stack`];
-            const listData = this[`${type}List`];
+            const distance = Math.round(Math.abs(this.pos2.y) / itemHeight);
             const oldEl = mapEl.get(this.newDate[type]);
             if (oldEl)
                 oldEl.opacity = 0.5;
-            if (direction === -1) {
-                const newData = this.getPrev(type, listData[0]);
-                listData.unshift(newData);
-                const lb = this.$render("i-label", { caption: `${newData}`, font: font, lineHeight: lineHeight, opacity: 0.5 });
-                lb.setAttribute(`data-${type}`, `${newData}`);
-                parentStack.append(lb);
-                parentStack.insertBefore(lb, parentStack.firstChild);
-                mapEl.set(newData, lb);
-            }
-            else {
-                const newData = this.getNext(type, listData[listData.length - 1]);
-                listData.push(newData);
-                const lb = this.$render("i-label", { caption: `${newData}`, font: font, lineHeight: lineHeight, opacity: 0.5 });
-                lb.setAttribute(`data-${type}`, `${newData}`);
-                parentStack.append(lb);
-                mapEl.set(newData, lb);
-            }
+            this.updateList(type, direction, distance);
             let newValue = 0;
             if (type === 'month') {
-                this.initialDate.setMonth(this.initialDate.getMonth() + direction);
+                this.initialDate.setMonth(this.initialDate.getMonth() + (distance * direction));
                 newValue = this.initialDate.getMonth() + 1;
             }
             else if (type === 'year') {
-                this.initialDate.setFullYear(this.initialDate.getFullYear() + direction);
+                this.initialDate.setFullYear(this.initialDate.getFullYear() + (distance * direction));
                 newValue = this.initialDate.getFullYear();
             }
             else {
-                this.initialDate.setDate(this.initialDate.getDate() + direction);
+                this.initialDate.setDate(this.initialDate.getDate() + (distance * direction));
                 newValue = this.initialDate.getDate();
             }
+            this.newDate[type] = newValue;
             const newEl = mapEl.get(newValue);
             if (newEl)
                 newEl.opacity = 1;
-            const index = listData.indexOf(newValue);
-            const y = index * itemHeight - itemHeight;
-            this.animateFn(0, y, 300, parentStack);
-            this.newDate[type] = newValue;
+            const index = Array.from(parentStack.children).findIndex(child => child.dataset[type] === `${newValue}`);
+            if (index > 0) {
+                const y = (index - 1) * itemHeight;
+                if (distance < 2) {
+                    this._translate(0, -y, parentStack);
+                }
+                else {
+                    this.animateFn(0, y, 300, parentStack);
+                }
+            }
+            if (type === 'month')
+                this.renderDateList();
+        }
+        onRefresh(type) {
+            const parentStack = this[`${type}Stack`];
+            const index = Array.from(parentStack.children).findIndex(child => child.dataset[type] === `${this.newDate[type]}`);
+            if (index > 0) {
+                const y = (index - 1) * itemHeight;
+                this._translate(0, -y, parentStack);
+            }
+            else
+                this._translate(0, 0, parentStack);
         }
         _translate(x, y, parentStack) {
-            parentStack.scrollTop = y;
+            parentStack.style.transform = `translate3d(0px, ${y}px, 0)`;
+            parentStack.style.transform = `translate(0px, ${y}px)`;
         }
         animateFn(destX, destY, duration, parentStack) {
-            var that = this, startX = this.pos1.x, startY = this.pos2.y, startTime = new Date().getTime(), destTime = startTime + duration;
-            const easingFn = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            let that = this;
+            let startX = this.pos1.x;
+            let startY = this.pos1.y;
+            let startTime = Date.now();
+            let destTime = startTime + duration;
+            function easeInOutQuad(t) {
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            }
             function step() {
-                let now = new Date().getTime();
+                let now = Date.now();
                 let newX;
                 let newY;
-                let easing;
+                let easedTime;
                 if (now >= destTime) {
                     that.isAnimating = false;
-                    that._translate(destX, destY, parentStack);
+                    that._translate(destX, -destY, parentStack);
                     return;
                 }
                 now = (now - startTime) / duration;
-                easing = easingFn(now);
-                newX = (destX - startX) * easing + startX;
-                newY = (destY - startY) * easing + startY;
-                that._translate(newX, newY, parentStack);
+                easedTime = easeInOutQuad(now);
+                newX = (destX - startX) * easedTime + startX;
+                newY = (destY - startY) * easedTime + startY;
+                that._translate(newX, -newY, parentStack);
                 if (that.isAnimating) {
                     window.requestAnimationFrame(step);
                 }
@@ -406,41 +505,79 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             this.isAnimating = true;
             step();
         }
-        _handleMouseDown(event, stopPropagation) {
-            const result = super._handleMouseDown(event, stopPropagation);
-            if (result !== undefined) {
-                const target = event.target;
-                const sliderList = target.closest('.scroll-container');
-                if (sliderList) {
-                    this.dragStartHandler(event);
-                    return true;
+        updateList(type, direction, distance) {
+            const mapEl = this[`${type}Map`];
+            const parentStack = this[`${type}Stack`];
+            const getLabel = (value) => {
+                const lb = mapEl.get(value) || this.$render("i-label", { caption: `${value}`, font: font, lineHeight: lineHeight, opacity: 0.5 });
+                lb.setAttribute(`data-${type}`, `${value}`);
+                return lb;
+            };
+            if (direction === -1) {
+                let prevValue = +parentStack.firstChild.dataset[type];
+                for (let i = 0; i < distance; i++) {
+                    const newPrev = this.getPrev(type, prevValue);
+                    if (!newPrev)
+                        break;
+                    prevValue = newPrev;
+                    const prevLb = getLabel(newPrev);
+                    parentStack.append(prevLb);
+                    parentStack.insertBefore(prevLb, parentStack.firstChild);
+                    mapEl.set(newPrev, prevLb);
                 }
             }
-            return false;
+            else if (direction === 1) {
+                let nextValue = +parentStack.lastChild.dataset[type];
+                for (let i = 0; i < distance; i++) {
+                    const newNext = this.getNext(type, nextValue);
+                    if (!newNext)
+                        break;
+                    nextValue = newNext;
+                    const lb = getLabel(newNext);
+                    lb.setAttribute(`data-${type}`, `${newNext}`);
+                    parentStack.append(lb);
+                    mapEl.set(newNext, lb);
+                }
+            }
+        }
+        getTransform(parent) {
+            let matrix = getComputedStyle(parent, null)['transform'].replace(/[^0-9-.,]/g, '').split(',');
+            return {
+                x: Number(matrix[4] || 0),
+                y: Number(matrix[5] || 0)
+            };
+        }
+        _handleMouseDown(event, stopPropagation) {
+            const target = event.target;
+            const wrapper = target.closest('.scroller');
+            if (wrapper) {
+                this.dragStartHandler(event);
+                return true;
+            }
+            return super._handleMouseDown(event, stopPropagation);
         }
         _handleMouseMove(event, stopPropagation) {
-            const result = super._handleMouseMove(event, stopPropagation);
-            if (result !== undefined) {
-                const target = event.target;
-                const sliderList = target.closest('.scroll-container');
-                if (sliderList) {
-                    this.dragHandler(event);
-                    return true;
-                }
+            const target = event.target;
+            const wrapper = target.closest('#pnlSelect');
+            if (wrapper) {
+                this.dragHandler(event);
+                return true;
             }
-            return false;
+            return super._handleMouseMove(event, stopPropagation);
         }
         _handleMouseUp(event, stopPropagation) {
-            const result = super._handleMouseUp(event, stopPropagation);
-            if (result !== undefined) {
-                const target = event.target;
-                const sliderList = target.closest('.scroll-container');
-                if (sliderList) {
-                    this.dragEndHandler(event);
-                    return true;
-                }
+            const target = event.target;
+            const wrapper = target.closest('#pnlSelect');
+            if (wrapper) {
+                this.dragEndHandler(event);
+                return true;
             }
-            return false;
+            else {
+                this.onRefresh('date');
+                this.onRefresh('month');
+                this.onRefresh('year');
+            }
+            return super._handleMouseUp(event, stopPropagation);
         }
         init() {
             super.init();
@@ -456,14 +593,20 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                     this.$render("i-hstack", { gap: "1rem", horizontalAlignment: 'center' },
                         this.$render("i-label", { id: "lbDate", caption: '' }),
                         this.$render("i-icon", { name: "caret-up", width: '1rem', height: '1rem', fill: Theme.text.primary }))),
-                this.$render("i-vstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "1rem", minHeight: '50vh' },
-                    this.$render("i-grid-layout", { columnsPerRow: 3, horizontalAlignment: 'center', gap: { column: '1rem', row: '0.25rem' } },
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%' },
-                            this.$render("i-vstack", { id: "dateStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', overflow: { x: 'hidden', y: 'auto' }, width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container date-container" })),
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%' },
-                            this.$render("i-vstack", { id: "monthStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', overflow: { x: 'hidden', y: 'auto' }, width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container month-container" })),
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%' },
-                            this.$render("i-vstack", { id: "yearStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', overflow: { x: 'hidden', y: 'auto' }, width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container year-container" })))),
+                this.$render("i-vstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "1rem", minHeight: '50vh', position: 'relative' },
+                    this.$render("i-grid-layout", { id: "pnlSelect", columnsPerRow: 3, horizontalAlignment: 'center', gap: { column: '1rem', row: '0.25rem' } },
+                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
+                            this.$render("i-vstack", { id: "dateStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
+                                // overflow={{x: 'hidden', y: 'auto'}}
+                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container date-container" })),
+                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
+                            this.$render("i-vstack", { id: "monthStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
+                                // overflow={{x: 'hidden', y: 'auto'}}
+                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container month-container" })),
+                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
+                            this.$render("i-vstack", { id: "yearStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
+                                // overflow={{x: 'hidden', y: 'auto'}}
+                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container year-container" })))),
                 this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between' },
                     this.$render("i-button", { caption: 'Cancel', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, boxShadow: 'none', border: { radius: 0 }, onClick: this.onCloseSelect }),
                     this.$render("i-button", { caption: 'Ok', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, border: { radius: 0 }, boxShadow: 'none', onClick: this.onChangedSelect }))));
