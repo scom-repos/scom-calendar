@@ -24,3 +24,8 @@ export interface IPos {
   x: number;
   y: number;
 }
+
+export interface ISelectOption {
+  text: string;
+  value: number;
+}
