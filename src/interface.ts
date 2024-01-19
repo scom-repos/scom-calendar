@@ -16,6 +16,16 @@ export interface IEvent {
   data?: any;
 }
 
+export interface IHoliday {
+  country: string,
+  iso: string,
+  year: number,
+  date: string
+  day: string,
+  name: string,
+  type: string
+}
+
 export interface ICalendar {
   events?: IEvent[];
 }
@@ -29,3 +39,5 @@ export interface ISelectOption {
   text: string;
   value: number;
 }
+
+export type IViewMode = 'month' | 'week' | 'full';
