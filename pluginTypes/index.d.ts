@@ -23,6 +23,10 @@ declare module "@scom/scom-calendar/interface.ts" {
         x: number;
         y: number;
     }
+    export interface ISelectOption {
+        text: string;
+        value: number;
+    }
 }
 /// <amd-module name="@scom/scom-calendar/data/holidays.json.ts" />
 declare module "@scom/scom-calendar/data/holidays.json.ts" {
@@ -39,7 +43,73 @@ declare module "@scom/scom-calendar/data/holidays.json.ts" {
 }
 /// <amd-module name="@scom/scom-calendar/common/select.css.ts" />
 declare module "@scom/scom-calendar/common/select.css.ts" {
-    export const transitionStyle: string;
+    export const selectorStyles: string;
+}
+/// <amd-module name="@scom/scom-calendar/common/utils.ts" />
+declare module "@scom/scom-calendar/common/utils.ts" {
+    export class IosSelector {
+        private options;
+        halfCount: number;
+        quarterCount: number;
+        a: number;
+        minV: number;
+        source: any;
+        exceedA: number;
+        moveT: number;
+        moving: boolean;
+        elems: {
+            el: any;
+            circleList: any;
+            circleItems: any;
+            highlight: any;
+            highlightList: any;
+            highListItems: any;
+        };
+        events: {
+            touchstart: any;
+            touchmove: any;
+            touchend: any;
+        };
+        itemHeight: number;
+        itemAngle: number;
+        radius: number;
+        scroll: number;
+        value: any;
+        type: string;
+        selected: any;
+        onChange: any;
+        constructor(options: any);
+        _init(): void;
+        _touchstart(e: any, touchData: any): void;
+        _touchmove(e: any, touchData: any): void;
+        _touchend(e: any, touchData: any): void;
+        _create(source: any): void;
+        /**
+         * 对 scroll 取模，eg source.length = 5 scroll = 6.1
+         * 取模之后 normalizedScroll = 1.1
+         * @param {init} scroll
+         * @return 取模之后的 normalizedScroll
+         */
+        _normalizeScroll(scroll: any): any;
+        /**
+         * 定位到 scroll，无动画
+         * @param {init} scroll
+         * @return 返回指定 normalize 之后的 scroll
+         */
+        _moveTo(scroll: any): any;
+        /**
+         * 以初速度 initV 滚动
+         * @param {init} initV， initV 会被重置
+         * 以根据加速度确保滚动到整数 scroll (保证能通过 scroll 定位到一个选中值)
+         */
+        _animateMoveByInitV(initV: any): Promise<void>;
+        _animateToScroll(initScroll: any, finalScroll: any, t: any, easingName?: string): Promise<void>;
+        _stop(): void;
+        _selectByScroll(scroll: any): void;
+        updateSource(source: any): void;
+        select(value: any): void;
+        destroy(): void;
+    }
 }
 /// <amd-module name="@scom/scom-calendar/common/select.tsx" />
 declare module "@scom/scom-calendar/common/select.tsx" {
@@ -61,60 +131,32 @@ declare module "@scom/scom-calendar/common/select.tsx" {
     }
     export class ScomCalendarSelect extends Module {
         private lbDate;
-        private dateStack;
-        private yearStack;
-        private monthStack;
-        private pnlSelect;
-        private yearMap;
-        private monthMap;
-        private dateMap;
+        private pnlYear;
+        private pnlMonth;
+        private pnlDate;
+        private yearSelector;
+        private monthSelector;
+        private daySelector;
         private initialDate;
-        private initialYear;
         private _data;
-        private pos1;
-        private pos2;
-        private startX;
-        private startY;
-        private yearList;
-        private monthList;
-        private dateList;
-        private newDate;
-        private isAnimating;
-        private threshold;
-        private isScrolling;
+        private currentYear;
+        private currentMonth;
+        private currentDay;
         onChanged: (date: string) => void;
         onClose: () => void;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarSelectElement, parent?: Container): Promise<ScomCalendarSelect>;
         get date(): string;
         set date(value: string);
-        private get initialData();
-        private get daysInMonth();
         setData(data: ISelect): void;
         clear(): void;
         private renderUI;
-        private renderDateList;
-        private renderMonthList;
-        private renderYearList;
-        private getPrev;
-        private getNext;
-        private renderCurrent;
+        private renderSelectors;
+        private getYears;
+        getMonths(): any[];
+        getDays(year: number, month: number): any[];
         private onCloseSelect;
         private onChangedSelect;
-        private dragStartHandler;
-        private dragHandler;
-        private findNearestChild;
-        private dragEndHandler;
-        private getParentType;
-        private onScroll;
-        private onRefresh;
-        private _translate;
-        private animateFn;
-        private updateList;
-        private getTransform;
-        _handleMouseDown(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
-        _handleMouseMove(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
-        _handleMouseUp(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         init(): void;
         render(): void;
     }
@@ -122,6 +164,7 @@ declare module "@scom/scom-calendar/common/select.tsx" {
 /// <amd-module name="@scom/scom-calendar/common/index.ts" />
 declare module "@scom/scom-calendar/common/index.ts" {
     export { ScomCalendarSelect } from "@scom/scom-calendar/common/select.tsx";
+    export * from "@scom/scom-calendar/common/utils.ts";
 }
 /// <amd-module name="@scom/scom-calendar/index.css.ts" />
 declare module "@scom/scom-calendar/index.css.ts" {

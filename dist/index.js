@@ -4,6 +4,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 define("@scom/scom-calendar/interface.ts", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -108,46 +122,504 @@ define("@scom/scom-calendar/data/holidays.json.ts", ["require", "exports"], func
 define("@scom/scom-calendar/common/select.css.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.transitionStyle = void 0;
-    exports.transitionStyle = components_1.Styles.style({
+    exports.selectorStyles = void 0;
+    const Theme = components_1.Styles.Theme.ThemeVars;
+    function generateFn() {
+        let result = {};
+        for (let i = 1; i <= 100; i++) {
+            result[`&:nth-child(${i})`] = {
+                transform: `rotateX(-18deg * (${i} - 1)) translateZ(9.375rem)`
+            };
+        }
+        return result;
+    }
+    exports.selectorStyles = components_1.Styles.style({
         $nest: {
-            '.scroll-container': {
-                // transition: 'transform .3s cubic-bezier(0.19, 1, 0.22, 1) 0s',
+            '.select-wrap': {
+                position: 'relative',
+                height: "100%",
+                textAlign: 'center',
+                overflow: "hidden",
+                fontSize: '1.25rem',
+                color: Theme.text.primary,
                 $nest: {
-                    '&::-webkit-scrollbar': {
-                        height: 0,
-                        width: 0
+                    '&:before, &:after': {
+                        position: "absolute",
+                        zIndex: 1,
+                        display: "block",
+                        content: '',
+                        width: '100%',
+                        height: '50%'
                     },
-                }
+                    "&:before": {
+                        top: 0,
+                        backgroundImage: "linear-gradient(to bottom, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0))",
+                    },
+                    "&:after": {
+                        bottom: 0,
+                        backgroundImage: "linear-gradient(to top, rgba(1, 1, 1, 0.5), rgba(1, 1, 1, 0))"
+                    },
+                    ".select-options": {
+                        position: "absolute",
+                        top: '50%',
+                        left: 0,
+                        width: "100%",
+                        height: 0,
+                        transformStyle: 'preserve-3d',
+                        margin: '0 auto',
+                        display: 'block',
+                        transform: 'translateZ(-9.375rem) rotateX(0deg)',
+                        '-webkit-font-smoothing': 'subpixel-antialiased',
+                        color: Theme.text.primary,
+                        $nest: {
+                            '.select-option': {
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: '3.125rem',
+                                '-webkit-font-smoothing': 'subpixel-antialiased',
+                                $nest: generateFn()
+                            }
+                        }
+                    }
+                },
+            },
+            '.highlight': {
+                position: "absolute",
+                top: "50%",
+                transform: "translate(0, -50%)",
+                width: "100%",
+                borderTop: `0.5px solid ${Theme.action.hoverBackground}`,
+                borderBottom: `0.5px solid ${Theme.action.hoverBackground}`,
+                fontSize: '1.5rem',
+                overflow: "hidden",
+            },
+            ".highlight-list": {
+                position: "absolute",
+                padding: 0,
+                width: "100%",
+                listStyle: 'none'
+            },
+            /* date */
+            ".date-selector": {
+                transform: 'translate(-50%, -50%)',
+                perspective: '2000px',
+                width: '37.5rem',
+                maxWidth: '100%',
+                height: '18.75rem',
+                $nest: {
+                    ".select-wrap": {
+                        fontSize: '1.25rem'
+                    },
+                    ".highlight": {
+                        fontSize: '1.25rem'
+                    }
+                },
             }
         }
     });
 });
-define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/select.css.ts"], function (require, exports, components_2, select_css_1) {
+define("@scom/scom-calendar/common/utils.ts", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.IosSelector = void 0;
+    ///<amd-module name='@scom/scom-calendar/common/utils.ts'/> 
+    const easing = {
+        easeOutCubic: function (pos) {
+            return (Math.pow((pos - 1), 3) + 1);
+        },
+        easeOutQuart: function (pos) {
+            return -(Math.pow((pos - 1), 4) - 1);
+        },
+    };
+    class IosSelector {
+        constructor(options) {
+            this.options = {};
+            let defaults = {
+                el: null,
+                type: 'infinite',
+                count: 20,
+                sensitivity: 0.8,
+                source: [],
+                value: null,
+                onChange: null
+            };
+            this.options = Object.assign({}, defaults, options);
+            this.options.count = this.options.count - this.options.count % 4;
+            Object.assign(this, this.options);
+            this.halfCount = this.options.count / 2;
+            this.quarterCount = this.options.count / 4;
+            this.a = this.options.sensitivity * 10; // 滚动减速度
+            this.minV = Math.sqrt(1 / this.a); // 最小初速度
+            this.selected = this.source[0];
+            this.exceedA = 10; // 超出减速 
+            this.moveT = 0; // 滚动 tick
+            this.moving = false;
+            this.elems = {
+                el: this.options.el,
+                circleList: null,
+                circleItems: null,
+                highlight: null,
+                highlightList: null,
+                highListItems: null // list
+            };
+            this.events = {
+                touchstart: null,
+                touchmove: null,
+                touchend: null
+            };
+            this.itemHeight = this.elems.el.offsetHeight * 3 / this.options.count; // 每项高度
+            this.itemAngle = 360 / this.options.count; // 每项之间旋转度数
+            this.radius = this.itemHeight / Math.tan(this.itemAngle * Math.PI / 180); // 圆环半径 
+            this.scroll = 0; // 单位为一个 item 的高度（度数）
+            this._init();
+        }
+        _init() {
+            this._create(this.options.source);
+            let touchData = {
+                startY: 0,
+                yArr: []
+            };
+            for (let eventName in this.events) {
+                this.events[eventName] = ((eventName) => {
+                    return (e) => {
+                        if (this.elems.el.contains(e.target) || e.target === this.elems.el) {
+                            e.preventDefault();
+                            if (this.source.length) {
+                                this['_' + eventName](e, touchData);
+                            }
+                        }
+                    };
+                })(eventName);
+            }
+            this.elems.el.addEventListener('touchstart', this.events.touchstart);
+            document.addEventListener('mousedown', this.events.touchstart);
+            this.elems.el.addEventListener('touchend', this.events.touchend);
+            document.addEventListener('mouseup', this.events.touchend);
+            if (this.source.length) {
+                this.value = this.value !== null ? this.value : this.source[0].value;
+                this.select(this.value);
+            }
+        }
+        _touchstart(e, touchData) {
+            this.elems.el.addEventListener('touchmove', this.events.touchmove);
+            document.addEventListener('mousemove', this.events.touchmove);
+            let eventY = e.clientY || e.touches[0].clientY;
+            touchData.startY = eventY;
+            touchData.yArr = [[eventY, new Date().getTime()]];
+            touchData.touchScroll = this.scroll;
+            this._stop();
+        }
+        _touchmove(e, touchData) {
+            let eventY = e.clientY || e.touches[0].clientY;
+            touchData.yArr.push([eventY, new Date().getTime()]);
+            if (touchData.length > 5) {
+                touchData.unshift();
+            }
+            let scrollAdd = (touchData.startY - eventY) / this.itemHeight;
+            let moveToScroll = scrollAdd + this.scroll;
+            // 非无限滚动时，超出范围使滚动变得困难
+            if (this.type === 'normal') {
+                if (moveToScroll < 0) {
+                    moveToScroll *= 0.3;
+                }
+                else if (moveToScroll > this.source.length) {
+                    moveToScroll = this.source.length + (moveToScroll - this.source.length) * 0.3;
+                }
+                // console.log(moveToScroll);
+            }
+            else {
+                moveToScroll = this._normalizeScroll(moveToScroll);
+            }
+            touchData.touchScroll = this._moveTo(moveToScroll);
+        }
+        _touchend(e, touchData) {
+            // console.log(e);
+            this.elems.el.removeEventListener('touchmove', this.events.touchmove);
+            document.removeEventListener('mousemove', this.events.touchmove);
+            let v;
+            if (touchData.yArr.length === 1) {
+                v = 0;
+            }
+            else {
+                let startTime = touchData.yArr[touchData.yArr.length - 2][1];
+                let endTime = touchData.yArr[touchData.yArr.length - 1][1];
+                let startY = touchData.yArr[touchData.yArr.length - 2][0];
+                let endY = touchData.yArr[touchData.yArr.length - 1][0];
+                // 计算速度
+                v = ((startY - endY) / this.itemHeight) * 1000 / (endTime - startTime);
+                let sign = v > 0 ? 1 : -1;
+                v = Math.abs(v) > 30 ? 30 * sign : v;
+            }
+            this.scroll = touchData.touchScroll;
+            this._animateMoveByInitV(v);
+            // console.log('end');
+        }
+        _create(source) {
+            if (!source.length) {
+                return;
+            }
+            let template = `
+      <div class="select-wrap">
+        <ul class="select-options" style="transform: translate3d(0, 0, ${-this.radius}px) rotateX(0deg);">
+          {{circleListHTML}}
+          <!-- <li class="select-option">a0</li> -->
+        </ul>
+        <div class="highlight">
+          <ul class="highlight-list">
+            <!-- <li class="highlight-item"></li> -->
+            {{highListHTML}}
+          </ul>
+        </div>
+      </div>
+    `;
+            // source 处理
+            if (this.options.type === 'infinite') {
+                let concatSource = [].concat(source);
+                while (concatSource.length < this.halfCount) {
+                    concatSource = concatSource.concat(source);
+                }
+                source = concatSource;
+            }
+            this.source = source;
+            let sourceLength = source.length;
+            // 圆环 HTML
+            let circleListHTML = '';
+            for (let i = 0; i < source.length; i++) {
+                circleListHTML += `<li class="select-option"
+                    style="
+                      top: ${this.itemHeight * -0.5}px;
+                      height: ${this.itemHeight}px;
+                      line-height: ${this.itemHeight}px;
+                      transform: rotateX(${-this.itemAngle * i}deg) translate3d(0, 0, ${this.radius}px);
+                    "
+                    data-index="${i}"
+                    >${source[i].text}</li>`;
+            }
+            // 中间高亮 HTML
+            let highListHTML = '';
+            for (let i = 0; i < source.length; i++) {
+                highListHTML += `<li class="highlight-item" style="height: ${this.itemHeight}px;">
+                        ${source[i].text}
+                      </li>`;
+            }
+            if (this.options.type === 'infinite') {
+                // 圆环头尾
+                for (let i = 0; i < this.quarterCount; i++) {
+                    // 头
+                    circleListHTML = `<li class="select-option"
+                      style="
+                        top: ${this.itemHeight * -0.5}px;
+                        height: ${this.itemHeight}px;
+                        line-height: ${this.itemHeight}px;
+                        transform: rotateX(${this.itemAngle * (i + 1)}deg) translate3d(0, 0, ${this.radius}px);
+                      "
+                      data-index="${-i - 1}"
+                      >${source[sourceLength - i - 1].text}</li>` + circleListHTML;
+                    // 尾
+                    circleListHTML += `<li class="select-option"
+                      style="
+                        top: ${this.itemHeight * -0.5}px;
+                        height: ${this.itemHeight}px;
+                        line-height: ${this.itemHeight}px;
+                        transform: rotateX(${-this.itemAngle * (i + sourceLength)}deg) translate3d(0, 0, ${this.radius}px);
+                      "
+                      data-index="${i + sourceLength}"
+                      >${source[i].text}</li>`;
+                }
+                // 高亮头尾
+                highListHTML = `<li class="highlight-item" style="height: ${this.itemHeight}px;">
+                          ${source[sourceLength - 1].text}
+                      </li>` + highListHTML;
+                highListHTML += `<li class="highlight-item" style="height: ${this.itemHeight}px;">${source[0].text}</li>`;
+            }
+            this.elems.el.innerHTML = template
+                .replace('{{circleListHTML}}', circleListHTML)
+                .replace('{{highListHTML}}', highListHTML);
+            this.elems.circleList = this.elems.el.querySelector('.select-options');
+            this.elems.circleItems = this.elems.el.querySelectorAll('.select-option');
+            this.elems.highlight = this.elems.el.querySelector('.highlight');
+            this.elems.highlightList = this.elems.el.querySelector('.highlight-list');
+            this.elems.highListItems = this.elems.el.querySelectorAll('.highlight-item');
+            if (this.type === 'infinite') {
+                this.elems.highlightList.style.top = -(this.itemHeight + this.itemHeight * 0.5) + 'px';
+            }
+            this.elems.highlight.style.height = this.itemHeight + 'px';
+            this.elems.highlight.style.lineHeight = `${this.itemHeight + 2}px`;
+        }
+        /**
+         * 对 scroll 取模，eg source.length = 5 scroll = 6.1
+         * 取模之后 normalizedScroll = 1.1
+         * @param {init} scroll
+         * @return 取模之后的 normalizedScroll
+         */
+        _normalizeScroll(scroll) {
+            let normalizedScroll = scroll;
+            while (normalizedScroll < 0) {
+                normalizedScroll += this.source.length;
+            }
+            normalizedScroll = normalizedScroll % this.source.length;
+            return normalizedScroll;
+        }
+        /**
+         * 定位到 scroll，无动画
+         * @param {init} scroll
+         * @return 返回指定 normalize 之后的 scroll
+         */
+        _moveTo(scroll) {
+            if (this.type === 'infinite') {
+                scroll = this._normalizeScroll(scroll);
+            }
+            this.elems.circleList.style.transform = `translate3d(0, 0, ${-this.radius}px) rotateX(${this.itemAngle * scroll}deg)`;
+            this.elems.highlightList.style.transform = `translate3d(0, ${-(scroll) * this.itemHeight}px, 0)`;
+            [...this.elems.circleItems].forEach(itemElem => {
+                if (Math.abs(itemElem.dataset.index - scroll) > this.quarterCount) {
+                    itemElem.style.visibility = 'hidden';
+                }
+                else {
+                    itemElem.style.visibility = 'visible';
+                }
+            });
+            // console.log(scroll);
+            // console.log(`translate3d(0, 0, ${-this.radius}px) rotateX(${-this.itemAngle * scroll}deg)`);
+            return scroll;
+        }
+        /**
+         * 以初速度 initV 滚动
+         * @param {init} initV， initV 会被重置
+         * 以根据加速度确保滚动到整数 scroll (保证能通过 scroll 定位到一个选中值)
+         */
+        async _animateMoveByInitV(initV) {
+            // console.log(initV);
+            let initScroll;
+            let finalScroll;
+            let totalScrollLen;
+            let a;
+            let t;
+            if (this.type === 'normal') {
+                if (this.scroll < 0 || this.scroll > this.source.length - 1) {
+                    a = this.exceedA;
+                    initScroll = this.scroll;
+                    finalScroll = this.scroll < 0 ? 0 : this.source.length - 1;
+                    totalScrollLen = initScroll - finalScroll;
+                    t = Math.sqrt(Math.abs(totalScrollLen / a));
+                    initV = a * t;
+                    initV = this.scroll > 0 ? -initV : initV;
+                    await this._animateToScroll(initScroll, finalScroll, t);
+                }
+                else {
+                    initScroll = this.scroll;
+                    a = initV > 0 ? -this.a : this.a; // 减速加速度
+                    t = Math.abs(initV / a); // 速度减到 0 花费时间
+                    totalScrollLen = initV * t + a * t * t / 2; // 总滚动长度
+                    finalScroll = Math.round(this.scroll + totalScrollLen); // 取整，确保准确最终 scroll 为整数
+                    finalScroll = finalScroll < 0 ? 0 : (finalScroll > this.source.length - 1 ? this.source.length - 1 : finalScroll);
+                    totalScrollLen = finalScroll - initScroll;
+                    t = Math.sqrt(Math.abs(totalScrollLen / a));
+                    await this._animateToScroll(this.scroll, finalScroll, t, 'easeOutQuart');
+                }
+            }
+            else {
+                initScroll = this.scroll;
+                a = initV > 0 ? -this.a : this.a; // 减速加速度
+                t = Math.abs(initV / a); // 速度减到 0 花费时间
+                totalScrollLen = initV * t + a * t * t / 2; // 总滚动长度
+                finalScroll = Math.round(this.scroll + totalScrollLen); // 取整，确保准确最终 scroll 为整数
+                await this._animateToScroll(this.scroll, finalScroll, t, 'easeOutQuart');
+            }
+            // await this._animateToScroll(this.scroll, finalScroll, initV, 0);
+            this._selectByScroll(this.scroll);
+        }
+        _animateToScroll(initScroll, finalScroll, t, easingName = 'easeOutQuart') {
+            if (initScroll === finalScroll || t === 0) {
+                this._moveTo(initScroll);
+                return;
+            }
+            let start = new Date().getTime() / 1000;
+            let pass = 0;
+            let totalScrollLen = finalScroll - initScroll;
+            return new Promise((resolve, reject) => {
+                this.moving = true;
+                let tick = () => {
+                    pass = new Date().getTime() / 1000 - start;
+                    if (pass < t) {
+                        this.scroll = this._moveTo(initScroll + easing[easingName](pass / t) * totalScrollLen);
+                        this.moveT = requestAnimationFrame(tick);
+                    }
+                    else {
+                        resolve();
+                        this._stop();
+                        this.scroll = this._moveTo(initScroll + totalScrollLen);
+                    }
+                };
+                tick();
+            });
+        }
+        _stop() {
+            this.moving = false;
+            cancelAnimationFrame(this.moveT);
+        }
+        _selectByScroll(scroll) {
+            scroll = this._normalizeScroll(scroll) | 0;
+            if (scroll > this.source.length - 1) {
+                scroll = this.source.length - 1;
+                this._moveTo(scroll);
+            }
+            this._moveTo(scroll);
+            this.scroll = scroll;
+            this.selected = this.source[scroll];
+            this.value = this.selected.value;
+            this.onChange && this.onChange(this.selected);
+        }
+        updateSource(source) {
+            this._create(source);
+            if (!this.moving) {
+                this._selectByScroll(this.scroll);
+            }
+        }
+        select(value) {
+            for (let i = 0; i < this.source.length; i++) {
+                if (this.source[i].value === value) {
+                    window.cancelAnimationFrame(this.moveT);
+                    // this.scroll = this._moveTo(i);
+                    let initScroll = this._normalizeScroll(this.scroll);
+                    let finalScroll = i;
+                    let t = Math.sqrt(Math.abs((finalScroll - initScroll) / this.a));
+                    this._animateToScroll(initScroll, finalScroll, t);
+                    setTimeout(() => this._selectByScroll(i));
+                    return;
+                }
+            }
+            throw new Error(`can not select value: ${value}, ${value} match nothing in current source`);
+        }
+        destroy() {
+            this._stop();
+            // document 事件解绑
+            for (let eventName in this.events) {
+                this.elems.el.removeEventListener(`${eventName}`, this.events[eventName]);
+            }
+            document.removeEventListener('mousedown', this.events['touchstart']);
+            document.removeEventListener('mousemove', this.events['touchmove']);
+            document.removeEventListener('mouseup', this.events['touchend']);
+            // 元素移除
+            this.elems.el.innerHTML = '';
+            this.elems = null;
+        }
+    }
+    exports.IosSelector = IosSelector;
+});
+define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/select.css.ts", "@scom/scom-calendar/common/utils.ts"], function (require, exports, components_2, select_css_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ScomCalendarSelect = void 0;
     const Theme = components_2.Styles.Theme.ThemeVars;
-    const itemHeight = 50;
-    const font = { size: '2rem', weight: 600 };
-    const lineHeight = '3.125rem';
     let ScomCalendarSelect = class ScomCalendarSelect extends components_2.Module {
         constructor(parent, options) {
             super(parent, options);
-            this.yearMap = new Map();
-            this.monthMap = new Map();
-            this.dateMap = new Map();
-            this.pos1 = { x: 0, y: 0 };
-            this.pos2 = { x: 0, y: 0 };
-            this.startX = 0;
-            this.startY = 0;
-            this.yearList = [];
-            this.monthList = [];
-            this.dateList = [];
-            this.newDate = { date: 0, month: 0, year: 0 };
-            this.isAnimating = false;
-            this.threshold = 10;
-            this.isScrolling = false;
+            this.currentYear = new Date().getFullYear();
+            this.currentMonth = 1;
+            this.currentDay = 1;
             this.onCloseSelect = this.onCloseSelect.bind(this);
             this.onChangedSelect = this.onChangedSelect.bind(this);
         }
@@ -162,22 +634,6 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         set date(value) {
             this._data.date = value;
         }
-        get initialData() {
-            const month = this.initialDate.getMonth() + 1;
-            const year = this.initialDate.getFullYear();
-            const date = this.initialDate.getDate();
-            const day = this.initialDate.getDay();
-            return {
-                month,
-                year,
-                date,
-                day
-            };
-        }
-        get daysInMonth() {
-            const { month, year } = this.newDate;
-            return new Date(year, month, 0).getDate();
-        }
         setData(data) {
             this._data = data;
             this.clear();
@@ -185,399 +641,101 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
         }
         clear() {
             this.initialDate = new Date();
-            this.newDate = { ...this.initialData };
-            this.dateStack.style.transform = '';
-            this.yearStack.style.transform = '';
-            this.monthStack.style.transform = '';
         }
         renderUI() {
             if (this.date) {
                 this.initialDate = new Date(this.date);
                 const monthName = this.initialDate.toLocaleString('default', { month: 'short' });
                 this.lbDate.caption = `${this.initialDate.getFullYear()} ${monthName}`;
-                this.newDate = { ...this.initialData };
+                this.currentDay = this.initialDate.getDate();
+                this.currentMonth = this.initialDate.getMonth() + 1;
+                this.currentYear = this.initialDate.getFullYear();
             }
-            this.initialYear = this.initialDate.getFullYear();
-            this.renderCurrent();
+            this.renderSelectors();
         }
-        renderDateList() {
-            this.dateStack.clearInnerHTML();
-            this.dateMap = new Map();
-            const { date } = this.initialData;
-            this.dateList = [date];
-            let prevValue = date;
-            let nextValue = date;
-            for (let i = 0; i < 5; i++) {
-                const newPrev = this.getPrev('date', prevValue);
-                prevValue = newPrev;
-                this.dateList.unshift(newPrev);
-                const newNext = this.getNext('date', nextValue);
-                nextValue = newNext;
-                this.dateList.push(newNext);
+        renderSelectors() {
+            if (!this.daySelector) {
+                this.daySelector = new utils_1.IosSelector({
+                    el: this.pnlDate,
+                    type: 'infinite',
+                    source: this.getDays(this.currentYear, this.currentMonth),
+                    count: 20,
+                    onChange: (selected) => {
+                        this.currentDay = selected.value;
+                    }
+                });
             }
-            for (let i of this.dateList) {
-                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === date ? 1 : 0.5, lineHeight: lineHeight });
-                lb.setAttribute('data-date', `${i}`);
-                this.dateStack.appendChild(lb);
-                this.dateMap.set(i, lb);
+            if (!this.yearSelector) {
+                this.yearSelector = new utils_1.IosSelector({
+                    el: this.pnlYear,
+                    type: 'infinite',
+                    source: this.getYears(),
+                    count: 20,
+                    onChange: (selected) => {
+                        this.currentYear = selected.value;
+                        const daySource = this.getDays(this.currentYear, this.currentMonth);
+                        this.daySelector.updateSource(daySource);
+                    }
+                });
             }
-            this._translate(0, -4 * itemHeight, this.dateStack);
+            if (!this.monthSelector) {
+                this.monthSelector = new utils_1.IosSelector({
+                    el: this.pnlMonth,
+                    type: 'infinite',
+                    source: this.getMonths(),
+                    count: 20,
+                    onChange: (selected) => {
+                        this.currentMonth = selected.value;
+                        const daySource = this.getDays(this.currentYear, this.currentMonth);
+                        this.daySelector.updateSource(daySource);
+                    }
+                });
+            }
+            this.daySelector.select(this.currentDay);
+            this.yearSelector.select(this.currentYear);
+            this.monthSelector.select(this.currentMonth);
         }
-        renderMonthList() {
-            this.monthStack.clearInnerHTML();
-            this.monthMap = new Map();
-            const { month } = this.initialData;
-            let prevValue = month;
-            let nextValue = month;
-            this.monthList = [month];
-            for (let i = 0; i < 5; i++) {
-                const newPrev = this.getPrev('month', prevValue);
-                prevValue = newPrev;
-                this.monthList.unshift(newPrev);
-                const newNext = this.getNext('month', nextValue);
-                nextValue = newNext;
-                this.monthList.push(newNext);
+        getYears() {
+            let currentYear = new Date().getFullYear();
+            let years = [];
+            for (let i = currentYear - 20; i < currentYear + 20; i++) {
+                years.push({
+                    value: i,
+                    text: i
+                });
             }
-            for (let i of this.monthList) {
-                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === month ? 1 : 0.5, lineHeight: lineHeight });
-                lb.setAttribute('data-month', `${i}`);
-                this.monthStack.appendChild(lb);
-                this.monthMap.set(i, lb);
-            }
-            this._translate(0, -4 * itemHeight, this.monthStack);
+            return years;
         }
-        renderYearList() {
-            this.yearStack.clearInnerHTML();
-            this.yearMap = new Map();
-            const { year } = this.initialData;
-            this.yearList = [year];
-            let prevValue = year;
-            let nextValue = year;
-            for (let i = 0; i < 5; i++) {
-                const newPrev = this.getPrev('year', prevValue);
-                prevValue = newPrev;
-                this.yearList.unshift(newPrev);
-                const newNext = this.getNext('year', nextValue);
-                nextValue = newNext;
-                this.yearList.push(newNext);
+        getMonths() {
+            let months = [];
+            for (let i = 1; i <= 12; i++) {
+                months.push({
+                    value: i,
+                    text: i
+                });
             }
-            for (let i of this.yearList) {
-                const lb = this.$render("i-label", { stack: { grow: '0' }, caption: `${i}`, font: font, opacity: i === year ? 1 : 0.5, lineHeight: lineHeight });
-                lb.setAttribute('data-year', `${i}`);
-                this.yearStack.appendChild(lb);
-                this.yearMap.set(i, lb);
-            }
-            this._translate(0, -4 * itemHeight, this.yearStack);
+            return months;
         }
-        getPrev(type, value) {
-            let result = 0;
-            if (type === 'date') {
-                result = value === 1 ? this.daysInMonth : value - 1;
+        getDays(year, month) {
+            let dayCount = new Date(year, month, 0).getDate();
+            let days = [];
+            for (let i = 1; i <= dayCount; i++) {
+                days.push({
+                    value: i,
+                    text: i
+                });
             }
-            else if (type === 'month') {
-                result = value === 1 ? 12 : value - 1;
-            }
-            else {
-                if (value > this.initialYear - 20)
-                    result = value - 1;
-            }
-            return result;
-        }
-        getNext(type, value) {
-            let result = 0;
-            if (type === 'date') {
-                result = value === this.daysInMonth ? 1 : value + 1;
-            }
-            else if (type === 'month') {
-                result = value === 12 ? 1 : value + 1;
-            }
-            else {
-                if (value < this.initialYear + 20)
-                    result = value + 1;
-            }
-            return result;
-        }
-        renderCurrent() {
-            this.renderDateList();
-            this.renderMonthList();
-            this.renderYearList();
+            return days;
         }
         onCloseSelect() {
+            ;
             if (this.onClose)
                 this.onClose();
         }
         onChangedSelect() {
-            const { year, month, date } = this.newDate;
-            const newDate = new Date(year, month - 1, date);
+            const newDate = new Date(this.currentYear, this.currentMonth - 1, this.currentDay);
             if (this.onChanged)
                 this.onChanged(newDate.toISOString());
-        }
-        dragStartHandler(event) {
-            if (event instanceof TouchEvent) {
-                this.pos1 = {
-                    x: event.touches[0].pageX,
-                    y: event.touches[0].pageY
-                };
-            }
-            else {
-                event.preventDefault();
-                this.pos1 = {
-                    x: event.clientX,
-                    y: event.clientY
-                };
-            }
-            this.pos2 = { x: 0, y: 0 };
-            this.startY = this.pos1.y;
-            this.isScrolling = true;
-        }
-        dragHandler(event) {
-            let deltaY = 0;
-            if (event instanceof TouchEvent) {
-                this.pos2 = {
-                    x: this.pos1.x - event.touches[0].pageX,
-                    y: this.pos1.y - event.touches[0].pageY
-                };
-                deltaY = event.touches[0].pageY - this.startY;
-                this.startY = event.touches[0].pageY;
-                this.startX = event.touches[0].pageX;
-            }
-            else {
-                this.pos2 = {
-                    x: this.pos1.x - event.clientX,
-                    y: this.pos1.y - event.clientY,
-                };
-                deltaY = event.clientY - this.startY;
-                this.startY = event.clientY;
-                this.startX = event.clientX;
-            }
-            const scroller = this.findNearestChild(this.startX, this.startY);
-            const parentStack = scroller ? scroller.children[0] : null;
-            if (parentStack) {
-                const type = this.getParentType(parentStack);
-                const distance = Math.abs(deltaY / itemHeight);
-                if (distance > 1)
-                    this.updateList(type, deltaY > 0 ? 1 : -1, distance);
-                const { x, y } = this.getTransform(parentStack);
-                this._translate(x, y + deltaY, parentStack);
-            }
-            else {
-                event.preventDefault();
-                return false;
-            }
-        }
-        findNearestChild(x, y) {
-            for (let child of this.pnlSelect.children) {
-                const c = child;
-                const { left, top } = child.getBoundingClientRect();
-                if (x >= left && x <= left + c.offsetWidth && y >= top && y <= top + c.offsetHeight) {
-                    return child;
-                }
-            }
-            return null;
-        }
-        dragEndHandler(event) {
-            this.isScrolling = false;
-            let clientX = 0;
-            let clientY = 0;
-            if (event instanceof TouchEvent) {
-                clientY = event.touches[0].pageY;
-                clientX = event.touches[0].pageX;
-            }
-            else {
-                clientY = event.clientY;
-                clientX = event.clientX;
-            }
-            const scroller = this.findNearestChild(clientX, clientY);
-            const parentStack = scroller ? scroller.children[0] : null;
-            const type = this.getParentType(parentStack);
-            if (type) {
-                if (this.pos2.y < -this.threshold) {
-                    this.onScroll(type, -1);
-                }
-                else if (this.pos2.y > this.threshold) {
-                    this.onScroll(type, 1);
-                }
-                else {
-                    this.onRefresh(type);
-                }
-            }
-            else {
-                this.onRefresh('date');
-                this.onRefresh('month');
-                this.onRefresh('year');
-            }
-        }
-        getParentType(parentStack) {
-            let type;
-            switch (parentStack?.id) {
-                case 'dateStack':
-                    type = 'date';
-                    break;
-                case 'monthStack':
-                    type = 'month';
-                    break;
-                case 'yearStack':
-                    type = 'year';
-                    break;
-            }
-            return type;
-        }
-        onScroll(type, direction) {
-            const mapEl = this[`${type}Map`];
-            const parentStack = this[`${type}Stack`];
-            const distance = Math.round(Math.abs(this.pos2.y) / itemHeight);
-            const oldEl = mapEl.get(this.newDate[type]);
-            if (oldEl)
-                oldEl.opacity = 0.5;
-            this.updateList(type, direction, distance);
-            let newValue = 0;
-            if (type === 'month') {
-                this.initialDate.setMonth(this.initialDate.getMonth() + (distance * direction));
-                newValue = this.initialDate.getMonth() + 1;
-            }
-            else if (type === 'year') {
-                this.initialDate.setFullYear(this.initialDate.getFullYear() + (distance * direction));
-                newValue = this.initialDate.getFullYear();
-            }
-            else {
-                this.initialDate.setDate(this.initialDate.getDate() + (distance * direction));
-                newValue = this.initialDate.getDate();
-            }
-            this.newDate[type] = newValue;
-            const newEl = mapEl.get(newValue);
-            if (newEl)
-                newEl.opacity = 1;
-            const index = Array.from(parentStack.children).findIndex(child => child.dataset[type] === `${newValue}`);
-            if (index > 0) {
-                const y = (index - 1) * itemHeight;
-                if (distance < 2) {
-                    this._translate(0, -y, parentStack);
-                }
-                else {
-                    this.animateFn(0, y, 300, parentStack);
-                }
-            }
-            if (type === 'month')
-                this.renderDateList();
-        }
-        onRefresh(type) {
-            const parentStack = this[`${type}Stack`];
-            const index = Array.from(parentStack.children).findIndex(child => child.dataset[type] === `${this.newDate[type]}`);
-            if (index > 0) {
-                const y = (index - 1) * itemHeight;
-                this._translate(0, -y, parentStack);
-            }
-            else
-                this._translate(0, 0, parentStack);
-        }
-        _translate(x, y, parentStack) {
-            parentStack.style.transform = `translate3d(0px, ${y}px, 0)`;
-            parentStack.style.transform = `translate(0px, ${y}px)`;
-        }
-        animateFn(destX, destY, duration, parentStack) {
-            let that = this;
-            let startX = this.pos1.x;
-            let startY = this.pos1.y;
-            let startTime = Date.now();
-            let destTime = startTime + duration;
-            function easeInOutQuad(t) {
-                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            }
-            function step() {
-                let now = Date.now();
-                let newX;
-                let newY;
-                let easedTime;
-                if (now >= destTime) {
-                    that.isAnimating = false;
-                    that._translate(destX, -destY, parentStack);
-                    return;
-                }
-                now = (now - startTime) / duration;
-                easedTime = easeInOutQuad(now);
-                newX = (destX - startX) * easedTime + startX;
-                newY = (destY - startY) * easedTime + startY;
-                that._translate(newX, -newY, parentStack);
-                if (that.isAnimating) {
-                    window.requestAnimationFrame(step);
-                }
-            }
-            this.isAnimating = true;
-            step();
-        }
-        updateList(type, direction, distance) {
-            const mapEl = this[`${type}Map`];
-            const parentStack = this[`${type}Stack`];
-            const getLabel = (value) => {
-                const lb = mapEl.get(value) || this.$render("i-label", { caption: `${value}`, font: font, lineHeight: lineHeight, opacity: 0.5 });
-                lb.setAttribute(`data-${type}`, `${value}`);
-                return lb;
-            };
-            if (direction === -1) {
-                let prevValue = +parentStack.firstChild.dataset[type];
-                for (let i = 0; i < distance; i++) {
-                    const newPrev = this.getPrev(type, prevValue);
-                    if (!newPrev)
-                        break;
-                    prevValue = newPrev;
-                    const prevLb = getLabel(newPrev);
-                    parentStack.append(prevLb);
-                    parentStack.insertBefore(prevLb, parentStack.firstChild);
-                    mapEl.set(newPrev, prevLb);
-                }
-            }
-            else if (direction === 1) {
-                let nextValue = +parentStack.lastChild.dataset[type];
-                for (let i = 0; i < distance; i++) {
-                    const newNext = this.getNext(type, nextValue);
-                    if (!newNext)
-                        break;
-                    nextValue = newNext;
-                    const lb = getLabel(newNext);
-                    lb.setAttribute(`data-${type}`, `${newNext}`);
-                    parentStack.append(lb);
-                    mapEl.set(newNext, lb);
-                }
-            }
-        }
-        getTransform(parent) {
-            let matrix = getComputedStyle(parent, null)['transform'].replace(/[^0-9-.,]/g, '').split(',');
-            return {
-                x: Number(matrix[4] || 0),
-                y: Number(matrix[5] || 0)
-            };
-        }
-        _handleMouseDown(event, stopPropagation) {
-            const target = event.target;
-            const wrapper = target.closest('.scroller');
-            if (wrapper) {
-                this.dragStartHandler(event);
-                return true;
-            }
-            return super._handleMouseDown(event, stopPropagation);
-        }
-        _handleMouseMove(event, stopPropagation) {
-            const target = event.target;
-            const wrapper = target.closest('#pnlSelect');
-            if (wrapper) {
-                this.dragHandler(event);
-                return true;
-            }
-            return super._handleMouseMove(event, stopPropagation);
-        }
-        _handleMouseUp(event, stopPropagation) {
-            const target = event.target;
-            const wrapper = target.closest('#pnlSelect');
-            if (wrapper) {
-                this.dragEndHandler(event);
-                return true;
-            }
-            else {
-                this.onRefresh('date');
-                this.onRefresh('month');
-                this.onRefresh('year');
-            }
-            return super._handleMouseUp(event, stopPropagation);
         }
         init() {
             super.init();
@@ -588,25 +746,16 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                 this.setData({ date });
         }
         render() {
-            return (this.$render("i-panel", { padding: { top: '2rem', bottom: '2rem', left: '2rem', right: '2rem' }, class: select_css_1.transitionStyle },
+            return (this.$render("i-panel", { padding: { top: '2rem', bottom: '2rem', left: '2rem', right: '2rem' }, class: select_css_1.selectorStyles },
                 this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between', gap: '0.5rem' },
                     this.$render("i-hstack", { gap: "1rem", horizontalAlignment: 'center' },
                         this.$render("i-label", { id: "lbDate", caption: '' }),
                         this.$render("i-icon", { name: "caret-up", width: '1rem', height: '1rem', fill: Theme.text.primary }))),
                 this.$render("i-vstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "1rem", minHeight: '50vh', position: 'relative' },
-                    this.$render("i-grid-layout", { id: "pnlSelect", columnsPerRow: 3, horizontalAlignment: 'center', gap: { column: '1rem', row: '0.25rem' } },
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
-                            this.$render("i-vstack", { id: "dateStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
-                                // overflow={{x: 'hidden', y: 'auto'}}
-                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container date-container" })),
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
-                            this.$render("i-vstack", { id: "monthStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
-                                // overflow={{x: 'hidden', y: 'auto'}}
-                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container month-container" })),
-                        this.$render("i-panel", { overflow: 'hidden', height: '9.375rem', width: '100%', class: "scroller" },
-                            this.$render("i-vstack", { id: "yearStack", verticalAlignment: 'start', horizontalAlignment: 'center', position: 'relative', 
-                                // overflow={{x: 'hidden', y: 'auto'}}
-                                width: '100%', height: '100%', cursor: 'pointer', class: "scroll-container year-container" })))),
+                    this.$render("i-hstack", { position: 'absolute', top: "50%", left: "50%", verticalAlignment: "stretch", horizontalAlignment: 'space-between', class: "date-selector" },
+                        this.$render("i-panel", { class: "year", id: "pnlYear", stack: { grow: '1', shrink: '1' } }),
+                        this.$render("i-panel", { class: "month", id: "pnlMonth", stack: { grow: '1', shrink: '1' } }),
+                        this.$render("i-panel", { class: "date", id: "pnlDate", stack: { grow: '1', shrink: '1' } }))),
                 this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between' },
                     this.$render("i-button", { caption: 'Cancel', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, boxShadow: 'none', border: { radius: 0 }, onClick: this.onCloseSelect }),
                     this.$render("i-button", { caption: 'Ok', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, border: { radius: 0 }, boxShadow: 'none', onClick: this.onChangedSelect }))));
@@ -618,11 +767,12 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
     ], ScomCalendarSelect);
     exports.ScomCalendarSelect = ScomCalendarSelect;
 });
-define("@scom/scom-calendar/common/index.ts", ["require", "exports", "@scom/scom-calendar/common/select.tsx"], function (require, exports, select_1) {
+define("@scom/scom-calendar/common/index.ts", ["require", "exports", "@scom/scom-calendar/common/select.tsx", "@scom/scom-calendar/common/utils.ts"], function (require, exports, select_1, utils_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ScomCalendarSelect = void 0;
     Object.defineProperty(exports, "ScomCalendarSelect", { enumerable: true, get: function () { return select_1.ScomCalendarSelect; } });
+    __exportStar(utils_2, exports);
 });
 define("@scom/scom-calendar/index.css.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_3) {
     "use strict";
