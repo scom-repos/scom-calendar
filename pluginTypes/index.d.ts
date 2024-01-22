@@ -16,6 +16,15 @@ declare module "@scom/scom-calendar/interface.ts" {
         link?: string;
         data?: any;
     }
+    export interface IHoliday {
+        country: string;
+        iso: string;
+        year: number;
+        date: string;
+        day: string;
+        name: string;
+        type: string;
+    }
     export interface ICalendar {
         events?: IEvent[];
     }
@@ -27,6 +36,7 @@ declare module "@scom/scom-calendar/interface.ts" {
         text: string;
         value: number;
     }
+    export type IViewMode = 'month' | 'week' | 'full';
 }
 /// <amd-module name="@scom/scom-calendar/data/holidays.json.ts" />
 declare module "@scom/scom-calendar/data/holidays.json.ts" {
@@ -44,6 +54,164 @@ declare module "@scom/scom-calendar/data/holidays.json.ts" {
 /// <amd-module name="@scom/scom-calendar/common/select.css.ts" />
 declare module "@scom/scom-calendar/common/select.css.ts" {
     export const selectorStyles: string;
+}
+/// <amd-module name="@scom/scom-calendar/common/view.css.ts" />
+declare module "@scom/scom-calendar/common/view.css.ts" {
+    export const transitionStyle: string;
+    export const swipeStyle: string;
+    export const monthListStyle: string;
+    export const eventSliderStyle: string;
+}
+/// <amd-module name="@scom/scom-calendar/assets.ts" />
+declare module "@scom/scom-calendar/assets.ts" {
+    function fullPath(path: string): string;
+    const _default_1: {
+        fullPath: typeof fullPath;
+    };
+    export default _default_1;
+}
+/// <amd-module name="@scom/scom-calendar/common/view.tsx" />
+declare module "@scom/scom-calendar/common/view.tsx" {
+    import { Module, Container, ControlElement } from '@ijstech/components';
+    import { IEvent, IHoliday, IViewMode } from "@scom/scom-calendar/interface.ts";
+    type callbackType = (data: IEvent, event: MouseEvent) => void;
+    type swipeCallbackType = () => boolean;
+    type selectCallbackType = (date: string) => void;
+    interface ScomCalendarViewElement extends ControlElement {
+        holidays?: IHoliday[];
+        events?: IEvent[];
+        mode?: IViewMode;
+        date?: string;
+        isPicker?: boolean;
+        onEventClicked?: callbackType;
+        onDateClicked?: selectCallbackType;
+        onSwiping?: swipeCallbackType;
+    }
+    interface IViewData {
+        holidays?: IHoliday[];
+        events?: IEvent[];
+        mode: IViewMode;
+        date?: string;
+        isPicker?: boolean;
+    }
+    global {
+        namespace JSX {
+            interface IntrinsicElements {
+                ["i-scom-calendar--view"]: ScomCalendarViewElement;
+            }
+        }
+    }
+    export class ScomCalendarView extends Module {
+        private gridHeader;
+        private listStack;
+        private selectedDate;
+        private pnlDates;
+        private pnlSelected;
+        private eventSlider;
+        private datesMap;
+        private monthsMap;
+        private selectedMap;
+        private initialDate;
+        private currentDate;
+        private oldMonth;
+        private initalDay;
+        private currentMonth;
+        private _data;
+        onEventClicked: callbackType;
+        onDateClicked: selectCallbackType;
+        onSwiping: swipeCallbackType;
+        constructor(parent?: Container, options?: any);
+        static create(options?: ScomCalendarViewElement, parent?: Container): Promise<ScomCalendarView>;
+        get holidays(): IHoliday[];
+        set holidays(value: IHoliday[]);
+        get events(): IEvent[];
+        set events(value: IEvent[]);
+        get mode(): IViewMode;
+        set mode(value: IViewMode);
+        get date(): string;
+        set date(value: string);
+        get isPicker(): boolean;
+        set isPicker(value: boolean);
+        private isCurrentDate;
+        private get initialData();
+        private get monthKey();
+        private get datesInMonth();
+        private get isWeekMode();
+        private getDates;
+        private daysInMonth;
+        private get calendarData();
+        private getEvents;
+        private getHoliday;
+        setData(data: IViewData): void;
+        private renderUI;
+        clear(): void;
+        private renderHeader;
+        private renderMonth;
+        private renderEvent;
+        private renderHoliday;
+        private renderEventSlider;
+        private renderSliderItem;
+        private handleEventClick;
+        private renderSelectedEvent;
+        private renderSelectedHoliday;
+        private onDateClick;
+        private updateOldDate;
+        private updateNewDate;
+        private updateDatesHeight;
+        private onMonthChanged;
+        private onSlideChanged;
+        private onSelectedDateChanged;
+        private animateFn;
+        onSwipeFullMonth(direction?: 1 | -1): {
+            month: number;
+            year: number;
+        };
+        onSwipeMonthEvents(direction?: 1 | -1): {
+            month: number;
+            year: number;
+        };
+        onSwipeWeek(direction?: 1 | -1): {
+            month: number;
+            year: number;
+        };
+        private activeDateWeek;
+        private updateMonthUI;
+        private onScroll;
+        init(): void;
+        render(): void;
+    }
+}
+/// <amd-module name="@scom/scom-calendar/common/monthPicker.tsx" />
+declare module "@scom/scom-calendar/common/monthPicker.tsx" {
+    import { Module, Container, ControlElement } from '@ijstech/components';
+    interface ScomCalendarMonthPickerElement extends ControlElement {
+        date?: string;
+        onChanged?: (date: string) => void;
+    }
+    global {
+        namespace JSX {
+            interface IntrinsicElements {
+                ["i-scom-calendar--month-picker"]: ScomCalendarMonthPickerElement;
+            }
+        }
+    }
+    export class ScomCalendarMonthPicker extends Module {
+        private monthView;
+        private _date;
+        onChanged: (date: string) => void;
+        constructor(parent?: Container, options?: any);
+        static create(options?: ScomCalendarMonthPickerElement, parent?: Container): Promise<ScomCalendarMonthPicker>;
+        get date(): string;
+        set date(value: string);
+        setData(date: string): void;
+        private onDateClick;
+        onSwipeFullMonth(direction: 1 | -1): {
+            month: number;
+            year: number;
+        };
+        init(): void;
+        render(): void;
+    }
 }
 /// <amd-module name="@scom/scom-calendar/common/utils.ts" />
 declare module "@scom/scom-calendar/common/utils.ts" {
@@ -111,6 +279,48 @@ declare module "@scom/scom-calendar/common/utils.ts" {
         destroy(): void;
     }
 }
+/// <amd-module name="@scom/scom-calendar/common/datePicker.tsx" />
+declare module "@scom/scom-calendar/common/datePicker.tsx" {
+    import { Module, ControlElement, Container } from '@ijstech/components';
+    interface ScomCalendarDatePickerElement extends ControlElement {
+        date?: string;
+        onChanged?: (date: string) => void;
+    }
+    global {
+        namespace JSX {
+            interface IntrinsicElements {
+                ["i-scom-calendar--date-picker"]: ScomCalendarDatePickerElement;
+            }
+        }
+    }
+    export class ScomCalendarDatePicker extends Module {
+        private pnlYear;
+        private pnlMonth;
+        private pnlDate;
+        private yearSelector;
+        private monthSelector;
+        private daySelector;
+        private initialDate;
+        private _date;
+        private currentYear;
+        private currentMonth;
+        private currentDay;
+        onChanged: (date: string) => void;
+        constructor(parent?: Container, options?: any);
+        static create(options?: ScomCalendarDatePickerElement, parent?: Container): Promise<ScomCalendarDatePicker>;
+        get date(): string;
+        set date(value: string);
+        setData(data: string): void;
+        private renderUI;
+        private renderSelectors;
+        private getYears;
+        getMonths(): any[];
+        getDays(year: number, month: number): any[];
+        private onChangedSelect;
+        init(): void;
+        render(): void;
+    }
+}
 /// <amd-module name="@scom/scom-calendar/common/select.tsx" />
 declare module "@scom/scom-calendar/common/select.tsx" {
     import { Module, ControlElement, Container } from '@ijstech/components';
@@ -131,17 +341,12 @@ declare module "@scom/scom-calendar/common/select.tsx" {
     }
     export class ScomCalendarSelect extends Module {
         private lbDate;
-        private pnlYear;
-        private pnlMonth;
-        private pnlDate;
-        private yearSelector;
-        private monthSelector;
-        private daySelector;
+        private monthPicker;
+        private datePicker;
+        private iconLeft;
+        private iconRight;
         private initialDate;
         private _data;
-        private currentYear;
-        private currentMonth;
-        private currentDay;
         onChanged: (date: string) => void;
         onClose: () => void;
         constructor(parent?: Container, options?: any);
@@ -149,14 +354,12 @@ declare module "@scom/scom-calendar/common/select.tsx" {
         get date(): string;
         set date(value: string);
         setData(data: ISelect): void;
-        clear(): void;
         private renderUI;
-        private renderSelectors;
-        private getYears;
-        getMonths(): any[];
-        getDays(year: number, month: number): any[];
-        private onCloseSelect;
-        private onChangedSelect;
+        private onCancel;
+        private onConfirm;
+        private onShowMonth;
+        private onMonthChanged;
+        private updateHeader;
         init(): void;
         render(): void;
     }
@@ -164,33 +367,21 @@ declare module "@scom/scom-calendar/common/select.tsx" {
 /// <amd-module name="@scom/scom-calendar/common/index.ts" />
 declare module "@scom/scom-calendar/common/index.ts" {
     export { ScomCalendarSelect } from "@scom/scom-calendar/common/select.tsx";
+    export { ScomCalendarMonthPicker } from "@scom/scom-calendar/common/monthPicker.tsx";
+    export { ScomCalendarDatePicker } from "@scom/scom-calendar/common/datePicker.tsx";
+    export { ScomCalendarView } from "@scom/scom-calendar/common/view.tsx";
     export * from "@scom/scom-calendar/common/utils.ts";
-}
-/// <amd-module name="@scom/scom-calendar/index.css.ts" />
-declare module "@scom/scom-calendar/index.css.ts" {
-    export const transitionStyle: string;
-    export const swipeStyle: string;
-    export const monthListStyle: string;
-    export const eventSliderStyle: string;
-}
-/// <amd-module name="@scom/scom-calendar/assets.ts" />
-declare module "@scom/scom-calendar/assets.ts" {
-    function fullPath(path: string): string;
-    const _default_1: {
-        fullPath: typeof fullPath;
-    };
-    export default _default_1;
 }
 /// <amd-module name="@scom/scom-calendar" />
 declare module "@scom/scom-calendar" {
     import { Module, Container, ControlElement } from '@ijstech/components';
     import { IEvent } from "@scom/scom-calendar/interface.ts";
-    import "@scom/scom-calendar/index.css.ts";
     type callbackType = (data: IEvent, event: MouseEvent) => void;
+    type selectCallbackType = (date: string) => void;
     interface ScomCalendarElement extends ControlElement {
         events?: IEvent[];
-        onFilter?: (data?: any) => void;
-        onItemClicked?: callbackType;
+        onEventClicked?: callbackType;
+        onDateClicked?: selectCallbackType;
     }
     global {
         namespace JSX {
@@ -200,85 +391,35 @@ declare module "@scom/scom-calendar" {
         }
     }
     export default class ScomCalendar extends Module {
-        private pnlWrapper;
-        private gridHeader;
-        private listStack;
+        private calendarView;
+        private selectEl;
         private lbMonth;
         private lbYear;
-        private selectedDate;
-        private inputAdd;
-        private pnlDates;
-        private pnlSelected;
-        private eventSlider;
-        private selectedMonth;
-        private selectEl;
-        private datesMap;
-        private monthsMap;
-        private selectedMap;
         private initialDate;
-        private currentDate;
-        private filteredData;
         private pos1;
         private pos2;
-        private oldMonth;
         private datePnlHeight;
         private isVerticalSwiping;
         private isHorizontalSwiping;
-        private viewMode;
-        private initalDay;
-        private currentMonth;
         private _events;
-        onFilter: (data?: any) => void;
-        onItemClicked: callbackType;
+        onEventClicked: callbackType;
+        onDateClicked: selectCallbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarElement, parent?: Container): Promise<ScomCalendar>;
         get events(): IEvent[];
         set events(value: IEvent[]);
-        private isCurrentDate;
-        private get initialData();
-        private get monthKey();
-        private get datesInMonth();
-        private get calendarData();
-        private get isWeekMode();
-        private getDates;
-        private daysInMonth;
-        private getEvents;
-        private getHoliday;
         setData({ events }: {
             events: IEvent[];
         }): void;
-        private renderUI;
-        clear(): void;
-        private renderHeader;
-        private renderMonth;
-        private renderEvent;
-        private renderHoliday;
-        private renderEventSlider;
-        private renderSliderItem;
-        private handleEventClick;
-        private renderSelectedEvent;
-        private renderSelectedHoliday;
-        private onDateClick;
-        private updateOldDate;
-        private updateNewDate;
-        private updateDatesHeight;
-        private onMonthChanged;
-        private onFilterData;
-        private onSlideChanged;
-        private onSelectedDateChanged;
+        private onSelectedDate;
+        private updateHeader;
         _handleMouseDown(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseMove(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         _handleMouseUp(event: PointerEvent | MouseEvent | TouchEvent, stopPropagation?: boolean): boolean;
         private dragStartHandler;
         private dragHandler;
         private dragEndHandler;
-        private animateFn;
-        onSwipeFullMonth(direction?: 1 | -1): void;
-        onSwipeMonthEvents(): void;
-        onSwipeWeek(direction?: 1 | -1): void;
-        private activeDateWeek;
-        private updateMonthUI;
-        private onScroll;
+        private onSwipeView;
         private onChangeDate;
         init(): void;
         render(): void;

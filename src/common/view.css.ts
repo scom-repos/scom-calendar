@@ -1,5 +1,4 @@
 import { Styles } from '@ijstech/components';
-const Theme = Styles.Theme.ThemeVars;
 
 export const transitionStyle = Styles.style({
   transition: 'height 0.3s ease'

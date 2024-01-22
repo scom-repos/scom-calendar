@@ -46,6 +46,7 @@ export default class Module1 extends Module {
                 width={'100vw'}
                 display='block'
                 overflow={'hidden'}
+                onEventClicked={(data) => console.log(data)}
             ></i-scom-calendar>
         </i-panel>
     }

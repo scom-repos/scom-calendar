@@ -220,6 +220,672 @@ define("@scom/scom-calendar/common/select.css.ts", ["require", "exports", "@ijst
         }
     });
 });
+define("@scom/scom-calendar/common/view.css.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.eventSliderStyle = exports.monthListStyle = exports.swipeStyle = exports.transitionStyle = void 0;
+    exports.transitionStyle = components_2.Styles.style({
+        transition: 'height 0.3s ease'
+    });
+    exports.swipeStyle = components_2.Styles.style({
+        // scrollSnapType: 'x mandatory',
+        // "-webkit-scroll-snap-type": 'x mandatory',
+        // '-webkit-overflow-scrolling': 'unset',
+        // transition: 'transform 0.3s ease',
+        $nest: {
+            '.scroll-item': {
+                scrollSnapAlign: 'start'
+            },
+            '&::-webkit-scrollbar': {
+                height: 0
+            },
+        }
+    });
+    exports.monthListStyle = components_2.Styles.style({
+        $nest: {
+            '&:not(.--full) > .scroll-item > .scroll-item': {
+                gridTemplateRows: 55
+            }
+        }
+    });
+    exports.eventSliderStyle = components_2.Styles.style({
+        $nest: {
+            "> div": {
+                height: '100%'
+            }
+        }
+    });
+});
+define("@scom/scom-calendar/assets.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_3) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    const moduleDir = components_3.application.currentModuleDir;
+    function fullPath(path) {
+        return `${moduleDir}/${path}`;
+    }
+    ;
+    exports.default = {
+        fullPath
+    };
+});
+define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/view.css.ts", "@scom/scom-calendar/assets.ts"], function (require, exports, components_4, view_css_1, assets_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ScomCalendarView = void 0;
+    const Theme = components_4.Styles.Theme.ThemeVars;
+    const DATES_PER_SLIDE = 35;
+    const DAYS = 7;
+    const ROWS = 5;
+    const defaultHolidayColor = Theme.colors.info.main;
+    const defaultEventColor = Theme.colors.primary.main;
+    const currentColor = Theme.colors.secondary.main;
+    let ScomCalendarView = class ScomCalendarView extends components_4.Module {
+        constructor(parent, options) {
+            super(parent, options);
+            this.datesMap = new Map();
+            this.monthsMap = new Map();
+            this.selectedMap = new Map();
+            this.initialDate = new Date();
+            this.currentDate = new Date();
+            this.oldMonth = '';
+            this.initalDay = 0;
+        }
+        static async create(options, parent) {
+            let self = new this(parent, options);
+            await self.ready();
+            return self;
+        }
+        get holidays() {
+            return this._data.holidays || [];
+        }
+        set holidays(value) {
+            this._data.holidays = value || [];
+        }
+        get events() {
+            return this._data.events || [];
+        }
+        set events(value) {
+            this._data.events = value || [];
+        }
+        get mode() {
+            return this._data.mode ?? 'full';
+        }
+        set mode(value) {
+            this._data.mode = value ?? 'full';
+        }
+        get date() {
+            return this._data.date;
+        }
+        set date(value) {
+            this._data.date = value;
+        }
+        get isPicker() {
+            return this._data.isPicker ?? false;
+        }
+        set isPicker(value) {
+            this._data.isPicker = value ?? false;
+        }
+        isCurrentDate(date) {
+            if (!date)
+                return false;
+            return this.currentDate.getDate() === date.date &&
+                this.currentDate.getMonth() + 1 === date.month &&
+                this.currentDate.getFullYear() === date.year;
+        }
+        get initialData() {
+            const month = this.initialDate.getMonth() + 1;
+            const year = this.initialDate.getFullYear();
+            const date = this.initialDate.getDate();
+            const day = this.initialDate.getDay();
+            return {
+                month,
+                year,
+                date,
+                day
+            };
+        }
+        get monthKey() {
+            return `${this.initialData.month}-${this.initialData.year}`;
+        }
+        get datesInMonth() {
+            const { month, year } = this.initialData;
+            let dates = [];
+            if (this.datesMap.has(this.monthKey)) {
+                dates = this.datesMap.get(this.monthKey);
+            }
+            else {
+                dates = this.getDates(month, year);
+            }
+            return dates;
+        }
+        get isWeekMode() {
+            return this.mode === 'week';
+        }
+        getDates(month, year) {
+            let dates = [];
+            const firstDay = new Date(year, month - 1, 1).getDay();
+            const daysInMonth = this.daysInMonth(month, year);
+            const prevMonthLastDate = new Date(year, month - 1, 0);
+            const prevMonth = prevMonthLastDate.getMonth() + 1;
+            const prevYear = prevMonthLastDate.getFullYear();
+            const prevDate = prevMonthLastDate.getDate();
+            const prevDateStr = `${prevMonth}/${prevDate}/${prevYear}`;
+            if (firstDay > 0) {
+                dates.unshift({ month: prevMonth, year: prevYear, date: prevDate, day: prevMonthLastDate.getDay() });
+                for (let i = 1; i < firstDay; i++) {
+                    const before = (0, components_4.moment)(prevDateStr).subtract(i, 'days');
+                    dates.unshift({ month: prevMonth, year: prevYear, date: before.get('date'), day: before.get('day') });
+                }
+            }
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(year, month - 1, i);
+                dates.push({ month, year, date: i, day: date.getDay() });
+            }
+            const fillingDates = DATES_PER_SLIDE - dates.length;
+            if (fillingDates > 0) {
+                for (let i = 1; i <= fillingDates; i++) {
+                    const after = (0, components_4.moment)(`${month}/${daysInMonth}-${year}`).add(i, 'days');
+                    dates.push({ month: month + 1, year: year, date: after.get('date'), day: after.get('day') });
+                }
+            }
+            return dates;
+        }
+        daysInMonth(month, year) {
+            return new Date(year, month, 0).getDate();
+        }
+        get calendarData() {
+            const eventsMap = {};
+            for (let i = 0; i < this.datesInMonth.length; i++) {
+                const item = this.datesInMonth[i];
+                const holiday = this.getHoliday(item);
+                const events = this.getEvents(item);
+                const dateKey = `${item.date}-${item.month}-${item.year}`;
+                eventsMap[dateKey] = { holiday, events };
+            }
+            return eventsMap;
+        }
+        getEvents(item) {
+            const { year, month, date } = item;
+            return [...this.events].filter(event => {
+                const startDate = (0, components_4.moment)(event.startDate).startOf('day');
+                const endDate = (0, components_4.moment)(event.endDate).endOf('day');
+                const checkingDate = (0, components_4.moment)(`${month}/${date}/${year}`).startOf('day');
+                return startDate.isSameOrBefore(checkingDate) && checkingDate.isSameOrBefore(endDate);
+            });
+        }
+        getHoliday(item) {
+            const { year, month, date } = item;
+            const finded = this.holidays.find(holiday => {
+                return (0, components_4.moment)(holiday.date).isSame((0, components_4.moment)(`${month}/${date}/${year}`));
+            });
+            return finded;
+        }
+        setData(data) {
+            this._data = data;
+            this.initialDate = this.date ? new Date(this.date) : new Date();
+            this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
+            this.clear();
+            this.renderUI();
+        }
+        renderUI(direction) {
+            const { month, year } = this.initialData;
+            this.renderMonth(month, year, direction);
+            this.renderEventSlider();
+        }
+        clear() {
+            this.listStack.clearInnerHTML();
+            this.updateDatesHeight('100%');
+            this.mode = 'full';
+            this.pnlSelected.height = 0;
+            this.monthsMap = new Map();
+            this.selectedMap = new Map();
+            this.initalDay = this.initialDate.getDay();
+            this.currentDate = new Date();
+            this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
+            this.style.setProperty('--grow', this.isWeekMode ? '1' : '0');
+            this.style.setProperty('--inner-grow', this.isWeekMode ? '0' : '1');
+        }
+        renderHeader() {
+            this.gridHeader.clearInnerHTML();
+            const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            for (let i = 0; i < days.length; i++) {
+                const color = i === 0 ? Theme.colors.error.main : Theme.text.primary;
+                const el = this.$render("i-label", { caption: days[i], font: { size: '1rem', weight: 500, color }, opacity: 0.7, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, lineHeight: '1.5rem', class: "text-center" });
+                this.gridHeader.append(el);
+            }
+        }
+        renderMonth(month, year, direction) {
+            const gridMonth = this.monthsMap.get(this.monthKey);
+            if (gridMonth) {
+                this.updateMonthUI(gridMonth);
+                return;
+            }
+            const gridDates = this.$render("i-stack", { direction: this.isWeekMode ? 'horizontal' : 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)', basis: '100%' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} scroll-item`, position: 'relative' });
+            gridDates.setAttribute('data-month', this.monthKey);
+            for (let i = 0; i < ROWS; i++) {
+                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: '100%' }, autoRowSize: 'auto', autoFillInHoles: true, position: 'relative' }));
+            }
+            const dates = [...this.datesInMonth];
+            for (let i = 0; i < dates.length; i++) {
+                const rowIndex = Math.floor(i / DAYS);
+                if (!gridDates.children[rowIndex])
+                    break;
+                const columnIndex = i % DAYS;
+                const item = dates[i];
+                const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
+                const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
+                const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
+                const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
+                const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+                const isSelectedDate = this.initialDate.getDate() === item.date;
+                const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
+                const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
+                    this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
+                el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
+                el.setAttribute('data-week', `${rowIndex}`);
+                if (holiday) {
+                    const holidayEl = this.renderHoliday(holiday, columnIndex);
+                    el.append(holidayEl);
+                }
+                if (events?.length) {
+                    for (let event of events) {
+                        const eventEl = this.renderEvent(event, columnIndex);
+                        el.append(eventEl);
+                    }
+                }
+                gridDates.children[rowIndex].append(el);
+                if (isSelectedDate) {
+                    this.updateOldDate();
+                    this.selectedDate = el;
+                }
+            }
+            const oldMonth = this.monthsMap.get(this.oldMonth);
+            this.listStack.append(gridDates);
+            if (oldMonth && direction) {
+                if (direction === 1) {
+                    this.listStack.insertBefore(oldMonth, gridDates);
+                }
+                else {
+                    this.listStack.insertBefore(gridDates, oldMonth);
+                }
+            }
+            this.datesMap.set(`${month}-${year}`, dates);
+            this.monthsMap.set(`${month}-${year}`, gridDates);
+        }
+        renderEvent(event, columnIndex) {
+            // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
+            // const columnSpan = spanDays === 0 ? 1 : spanDays;
+            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
+                this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 }, textOverflow: 'ellipsis' })));
+            return eventEl;
+        }
+        renderHoliday(holiday, columnIndex) {
+            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'start' }, padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', overflow: 'hidden', cursor: 'pointer' },
+                this.$render("i-label", { caption: holiday.name, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', wordBreak: 'break-word', lineClamp: 2, font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } }));
+        }
+        renderEventSlider() {
+            const itemsData = [];
+            let activeIndex = 0;
+            const currentDate = this.initialDate.getDate();
+            const currentMonth = this.initialDate.getMonth() + 1;
+            for (let i = 0; i < this.datesInMonth.length; i++) {
+                const date = this.datesInMonth[i];
+                const { holiday = null, events = [] } = this.calendarData[`${date.date}-${date.month}-${date.year}`] || {};
+                const eventEl = this.renderSliderItem(date, holiday, events);
+                itemsData.push({
+                    name: '',
+                    controls: [eventEl]
+                });
+                if (currentDate === date.date && currentMonth === date.month) {
+                    activeIndex = i;
+                }
+            }
+            this.eventSlider.items = itemsData;
+            this.eventSlider.activeSlide = activeIndex;
+        }
+        renderSliderItem(item, holiday, events) {
+            const { date, month, year } = item;
+            const dateKey = `${date}-${month}-${year}`;
+            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
+            const selectedPanel = this.selectedMap.get(dateKey);
+            if (selectedPanel)
+                return;
+            const selectedWrap = (this.$render("i-vstack", { width: '100%', height: '100%', overflow: { y: 'auto' }, padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' } }));
+            selectedWrap.setAttribute('data-slider-date', dateKey);
+            const caption = `${date} ${monthName}`;
+            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between', margin: { top: '1rem' }, width: '100%', overflow: 'hidden', stack: { shrink: '0' } },
+                this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between' },
+                    this.$render("i-label", { caption: caption, font: { size: '0.75rem', weight: 600 } })),
+                this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'smile' })));
+            const eventsStack = this.$render("i-vstack", { width: "100%", gap: "1rem", margin: { top: '0.5rem' } });
+            selectedWrap.append(eventsStack);
+            if (!holiday && !events?.length) {
+                eventsStack.append(this.$render("i-label", { margin: { top: '0.5rem' }, caption: 'No events', font: { size: '0.75rem', color: Theme.text.primary } }));
+            }
+            else {
+                this.renderSelectedHoliday(holiday, eventsStack);
+                for (let i = 0; i < events.length; i++) {
+                    this.renderSelectedEvent(events[i], eventsStack, i === events.length - 1);
+                }
+            }
+            return selectedWrap;
+        }
+        handleEventClick(data, event) {
+            if (this.onEventClicked)
+                this.onEventClicked(data, event);
+        }
+        renderSelectedEvent(event, parent, isLast) {
+            const startTime = (0, components_4.moment)(event.startDate).format('HH:mm');
+            const endTime = (0, components_4.moment)(event.endDate).format('HH:mm');
+            let iconAttr = {};
+            if (event.link?.startsWith('https://meet.google.com/')) {
+                iconAttr = { image: { url: assets_1.default.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block' } };
+            }
+            else {
+                iconAttr = { width: '1rem', height: '1rem', name: 'globe' };
+            }
+            parent.appendChild(this.$render("i-panel", { border: { bottom: { width: '1px', style: isLast ? 'none' : 'solid', color: Theme.divider } }, cursor: 'pointer', onClick: (t, e) => this.handleEventClick(event, e) },
+                this.$render("i-hstack", { padding: { top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem' }, gap: '0.25rem', horizontalAlignment: 'space-between' },
+                    this.$render("i-hstack", { gap: '0.25rem', stack: { grow: '1' } },
+                        this.$render("i-hstack", { stack: { shrink: '0', basis: '2.5rem' } },
+                            this.$render("i-label", { caption: startTime, font: { size: '0.75rem', weight: 500 } })),
+                        this.$render("i-panel", { stack: { shrink: '0', basis: '3px' }, height: '1.25rem', width: 3, border: { radius: '0.25rem' }, margin: { right: '0.625rem' }, background: { color: event.color || defaultEventColor } }),
+                        this.$render("i-vstack", { gap: "0.25rem" },
+                            this.$render("i-label", { caption: event.title, font: { size: '1rem', weight: 500 } }),
+                            this.$render("i-label", { caption: `${startTime} - ${endTime}`, font: { size: '0.75rem', weight: 500 }, opacity: 0.36 }))),
+                    this.$render("i-icon", { cursor: 'pointer', stack: { shrink: '0' }, onClick: () => window.open(event.link, '_blank'), visible: !!event.link, ...iconAttr }))));
+        }
+        renderSelectedHoliday(holiday, parent) {
+            if (!holiday)
+                return;
+            parent.appendChild(this.$render("i-panel", null,
+                this.$render("i-hstack", { padding: { top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem' }, gap: '0.25rem' },
+                    this.$render("i-hstack", { stack: { shrink: '0', basis: '2.5rem' }, horizontalAlignment: 'center' },
+                        this.$render("i-icon", { width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'calendar' })),
+                    this.$render("i-panel", { stack: { shrink: '0', basis: '3px' }, height: '1.25rem', width: 3, border: { radius: '0.25rem' }, margin: { right: '0.625rem' }, background: { color: holiday?.color || defaultHolidayColor } }),
+                    this.$render("i-label", { caption: holiday.name, font: { size: '1rem', weight: 500 } }),
+                    this.$render("i-vstack", { verticalAlignment: 'center', margin: { left: 'auto' }, stack: { shrink: '0' } },
+                        this.$render("i-icon", { width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'calendar-week' })))));
+        }
+        onDateClick(target, event, date) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isSwiping = this.onSwiping ? this.onSwiping() : false;
+            if (isSwiping)
+                return;
+            this.updateOldDate();
+            this.initialDate = new Date(date.year, date.month - 1, date.date);
+            this.initalDay = this.initialDate.getDay();
+            this.updateNewDate(target, date);
+            if (this.mode === 'full' && !this.isPicker) {
+                this.updateDatesHeight('345px');
+                this.style.setProperty('--border-color', Theme.background.main);
+                this.pnlSelected.height = 'auto';
+            }
+            const { month, year } = this.currentMonth || this.initialData;
+            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
+            this.eventSlider.activeSlide = index;
+            if (this.onDateClicked)
+                this.onDateClicked(this.initialDate.toISOString());
+        }
+        updateOldDate() {
+            if (this.selectedDate) {
+                this.selectedDate.border.color = Theme.background.main;
+            }
+        }
+        updateNewDate(target, data) {
+            if (target) {
+                this.selectedDate = target;
+                target.border = { radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important` };
+            }
+        }
+        updateDatesHeight(height) {
+            this.pnlDates.height = height;
+            if (height === '100%') {
+                this.listStack.classList.add('--full');
+            }
+            else {
+                this.listStack.classList.remove('--full');
+            }
+            let opacity = height === '345px' || height === '125px' ? '0' : '1';
+            this.style.setProperty('--event-opacity', opacity);
+            this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
+        }
+        onMonthChanged(direction) {
+            this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
+            this.initialDate.setMonth(this.initialDate.getMonth() + direction);
+            this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
+            this.renderUI(direction);
+        }
+        onSlideChanged(index) {
+            const { month, year } = this.initialData;
+            const dates = this.datesMap.get(`${month}-${year}`);
+            const newDate = dates[index];
+            this.onSelectedDateChanged(newDate);
+        }
+        onSelectedDateChanged(data) {
+            this.updateOldDate();
+            const { date, month, year } = data;
+            this.initialDate = new Date(year, month - 1, date);
+            this.initalDay = this.initialDate.getDay();
+            const dataDate = `${date}-${month}-${year}`;
+            const target = this.listStack.querySelector(`[data-date="${dataDate}"]`);
+            this.updateNewDate(target, data);
+        }
+        animateFn(framefn) {
+            const duration = 300;
+            const easing = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            const animateScroll = (timestamp) => {
+                const progress = Math.min(1, (timestamp - startTime) / duration);
+                const easedProgress = easing(progress);
+                framefn(easedProgress);
+                if (progress < 1) {
+                    requestAnimationFrame(animateScroll);
+                }
+            };
+            const startTime = performance.now();
+            requestAnimationFrame(animateScroll);
+        }
+        onSwipeFullMonth(direction) {
+            this.mode = 'full';
+            this.style.setProperty('--grow', '0');
+            this.style.setProperty('--inner-grow', '1');
+            this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
+            if (direction) {
+                this.onMonthChanged(direction);
+                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+            }
+            else {
+                const { month, year } = this.initialData;
+                const monthEl = this.monthsMap.get(`${month}-${year}`);
+                if (monthEl)
+                    this.updateMonthUI(monthEl);
+                this.updateDatesHeight('100%');
+                this.pnlSelected.height = 0;
+            }
+            return { ...this.currentMonth };
+        }
+        onSwipeMonthEvents(direction) {
+            this.mode = 'month';
+            this.style.setProperty('--grow', '0');
+            this.style.setProperty('--inner-grow', '1');
+            this.style.setProperty('--border-color', Theme.background.main);
+            this.updateDatesHeight('345px');
+            this.pnlSelected.height = 'auto';
+            if (direction) {
+                this.onMonthChanged(direction);
+                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+            }
+            const { date } = this.initialData;
+            const { month, year } = this.currentMonth || this.initialData;
+            const monthEl = this.monthsMap.get(`${month}-${year}`);
+            if (monthEl)
+                this.updateMonthUI(monthEl);
+            this.updateOldDate();
+            const dataDate = `${date}-${month}-${year}`;
+            const target = this.listStack.querySelector(`[data-date="${dataDate}"]`);
+            this.updateNewDate(target, { ...this.initialData });
+            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+            this.eventSlider.activeSlide = index;
+            return { ...this.currentMonth };
+        }
+        onSwipeWeek(direction) {
+            this.mode = 'week';
+            this.style.setProperty('--grow', '1');
+            this.style.setProperty('--inner-grow', '0');
+            this.style.setProperty('--border-color', Theme.background.main);
+            this.updateDatesHeight('125px');
+            this.pnlSelected.height = 'auto';
+            const { month, year } = this.currentMonth || this.initialData;
+            let monthEl = this.monthsMap.get(`${month}-${year}`);
+            if (!monthEl)
+                return { ...this.currentMonth };
+            this.updateMonthUI(monthEl);
+            if (!direction) {
+                if (this.selectedDate) {
+                    const week = this.selectedDate.getAttribute('data-week') || 0;
+                    if (week) {
+                        const startScrollLeft = monthEl.scrollLeft;
+                        const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
+                        this.animateFn((progress) => {
+                            monthEl.scrollTo({
+                                left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
+                            });
+                        });
+                    }
+                }
+                return { ...this.currentMonth };
+            }
+            const threshold = this.listStack.offsetWidth * 3;
+            const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            if (outOfMonth) {
+                this.initialDate = new Date(year, month - 1, 1);
+                this.onMonthChanged(direction);
+                const { month: newMonth, year: newYear } = this.initialData;
+                const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
+                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+                this.updateMonthUI(newMonthEl);
+                const factor = direction === 1 ? 0 : 4;
+                newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
+                this.activeDateWeek(newMonthEl, factor);
+            }
+            else {
+                this.onScroll(monthEl, direction, monthEl.offsetWidth);
+                const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
+                this.activeDateWeek(monthEl, week);
+            }
+            return { ...this.currentMonth };
+        }
+        activeDateWeek(monthEl, week) {
+            const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
+            if (dateEl) {
+                this.updateOldDate();
+                const dateData = dateEl.getAttribute('data-date');
+                const [date, month, year] = dateData.split('-');
+                if (date) {
+                    this.initialDate = new Date(year, month - 1, Number(date));
+                    const { month: currentMonth } = this.currentMonth || this.initialData;
+                    const index = this.datesMap.get(`${currentMonth}-${year}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
+                    this.eventSlider.activeSlide = index;
+                    this.selectedDate = dateEl;
+                    dateEl.border = { radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important` };
+                }
+            }
+        }
+        updateMonthUI(month) {
+            month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
+        }
+        onScroll(parent, direction, cWidth) {
+            const containerWidth = this.listStack.offsetWidth + 2;
+            const startScrollLeft = parent.scrollLeft;
+            const additional = direction === -1 ? 2 : 0;
+            const targetScrollLeft = startScrollLeft + (direction * containerWidth) + additional;
+            this.animateFn((progress) => {
+                parent.scrollTo({
+                    left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
+                });
+            });
+        }
+        init() {
+            super.init();
+            this.onSwiping = this.getAttribute('onSwiping', true) || this.onSwiping;
+            this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
+            this.onDateClicked = this.getAttribute('onDateClicked', true) || this.onDateClicked;
+            const holidays = this.getAttribute('holidays', true);
+            const events = this.getAttribute('events', true);
+            const mode = this.getAttribute('mode', true, 'full');
+            const date = this.getAttribute('date', true);
+            const isPicker = this.getAttribute('isPicker', true, false);
+            this.renderHeader();
+            this.setData({ holidays, events, mode, date });
+        }
+        render() {
+            return (this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: "100%", overflow: 'hidden', gap: "1rem" },
+                this.$render("i-vstack", { id: "pnlDates", maxHeight: '100%', padding: { top: '0.5rem', left: '0.75rem', right: '0.75rem' }, overflow: 'hidden', class: view_css_1.transitionStyle },
+                    this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
+                    this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: `${view_css_1.swipeStyle} ${view_css_1.monthListStyle}`, stack: { grow: '1' } })),
+                this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: '0' }, minHeight: 0, height: 0, overflow: 'hidden' },
+                    this.$render("i-carousel-slider", { id: "eventSlider", class: view_css_1.eventSliderStyle, swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))));
+        }
+    };
+    ScomCalendarView = __decorate([
+        components_4.customModule,
+        (0, components_4.customElements)('i-scom-calendar--view')
+    ], ScomCalendarView);
+    exports.ScomCalendarView = ScomCalendarView;
+});
+define("@scom/scom-calendar/common/monthPicker.tsx", ["require", "exports", "@ijstech/components"], function (require, exports, components_5) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ScomCalendarMonthPicker = void 0;
+    let ScomCalendarMonthPicker = class ScomCalendarMonthPicker extends components_5.Module {
+        constructor(parent, options) {
+            super(parent, options);
+        }
+        static async create(options, parent) {
+            let self = new this(parent, options);
+            await self.ready();
+            return self;
+        }
+        get date() {
+            return this._date;
+        }
+        set date(value) {
+            this._date = value;
+        }
+        setData(date) {
+            this.date = date;
+            this.monthView.onDateClicked = this.onDateClick.bind(this);
+            this.monthView.setData({
+                mode: 'full',
+                date: this.date,
+                isPicker: true
+            });
+        }
+        onDateClick(date) {
+            this._date = date;
+            if (this.onChanged)
+                this.onChanged(date);
+        }
+        onSwipeFullMonth(direction) {
+            return this.monthView.onSwipeFullMonth(direction);
+        }
+        init() {
+            super.init();
+            this.onChanged = this.getAttribute('onChanged', true) || this.onChanged;
+            const date = this.getAttribute('date', true);
+            this.setData(date);
+        }
+        render() {
+            return (this.$render("i-scom-calendar--view", { id: "monthView" }));
+        }
+    };
+    ScomCalendarMonthPicker = __decorate([
+        components_5.customModule,
+        (0, components_5.customElements)('i-scom-calendar--month-picker')
+    ], ScomCalendarMonthPicker);
+    exports.ScomCalendarMonthPicker = ScomCalendarMonthPicker;
+});
 define("@scom/scom-calendar/common/utils.ts", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -239,7 +905,7 @@ define("@scom/scom-calendar/common/utils.ts", ["require", "exports"], function (
             let defaults = {
                 el: null,
                 type: 'infinite',
-                count: 20,
+                count: 4,
                 sensitivity: 0.8,
                 source: [],
                 value: null,
@@ -443,10 +1109,10 @@ define("@scom/scom-calendar/common/utils.ts", ["require", "exports"], function (
             this.elems.highlightList = this.elems.el.querySelector('.highlight-list');
             this.elems.highListItems = this.elems.el.querySelectorAll('.highlight-item');
             if (this.type === 'infinite') {
-                this.elems.highlightList.style.top = -(this.itemHeight + this.itemHeight * 0.5) + 'px';
+                this.elems.highlightList.style.top = -(this.itemHeight + 20) + 'px'; // TODO
             }
             this.elems.highlight.style.height = this.itemHeight + 'px';
-            this.elems.highlight.style.lineHeight = `${this.itemHeight + 2}px`;
+            this.elems.highlight.style.lineHeight = `${this.itemHeight}px`;
         }
         /**
          * 对 scroll 取模，eg source.length = 5 scroll = 6.1
@@ -609,18 +1275,17 @@ define("@scom/scom-calendar/common/utils.ts", ["require", "exports"], function (
     }
     exports.IosSelector = IosSelector;
 });
-define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/select.css.ts", "@scom/scom-calendar/common/utils.ts"], function (require, exports, components_2, select_css_1, utils_1) {
+define("@scom/scom-calendar/common/datePicker.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/select.css.ts", "@scom/scom-calendar/common/utils.ts"], function (require, exports, components_6, select_css_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.ScomCalendarSelect = void 0;
-    const Theme = components_2.Styles.Theme.ThemeVars;
-    let ScomCalendarSelect = class ScomCalendarSelect extends components_2.Module {
+    exports.ScomCalendarDatePicker = void 0;
+    const COUNT = 10;
+    let ScomCalendarDatePicker = class ScomCalendarDatePicker extends components_6.Module {
         constructor(parent, options) {
             super(parent, options);
             this.currentYear = new Date().getFullYear();
             this.currentMonth = 1;
             this.currentDay = 1;
-            this.onCloseSelect = this.onCloseSelect.bind(this);
             this.onChangedSelect = this.onChangedSelect.bind(this);
         }
         static async create(options, parent) {
@@ -629,28 +1294,20 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             return self;
         }
         get date() {
-            return this._data.date;
+            return this._date;
         }
         set date(value) {
-            this._data.date = value;
+            this._date = value;
         }
         setData(data) {
-            this._data = data;
-            this.clear();
+            this.date = data;
             this.renderUI();
         }
-        clear() {
-            this.initialDate = new Date();
-        }
         renderUI() {
-            if (this.date) {
-                this.initialDate = new Date(this.date);
-                const monthName = this.initialDate.toLocaleString('default', { month: 'short' });
-                this.lbDate.caption = `${this.initialDate.getFullYear()} ${monthName}`;
-                this.currentDay = this.initialDate.getDate();
-                this.currentMonth = this.initialDate.getMonth() + 1;
-                this.currentYear = this.initialDate.getFullYear();
-            }
+            this.initialDate = this.date ? new Date(this.date) : new Date();
+            this.currentDay = this.initialDate.getDate();
+            this.currentMonth = this.initialDate.getMonth() + 1;
+            this.currentYear = this.initialDate.getFullYear();
             this.renderSelectors();
         }
         renderSelectors() {
@@ -659,9 +1316,10 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                     el: this.pnlDate,
                     type: 'infinite',
                     source: this.getDays(this.currentYear, this.currentMonth),
-                    count: 20,
+                    count: COUNT,
                     onChange: (selected) => {
                         this.currentDay = selected.value;
+                        this.onChangedSelect();
                     }
                 });
             }
@@ -670,11 +1328,12 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                     el: this.pnlYear,
                     type: 'infinite',
                     source: this.getYears(),
-                    count: 20,
+                    count: COUNT,
                     onChange: (selected) => {
                         this.currentYear = selected.value;
                         const daySource = this.getDays(this.currentYear, this.currentMonth);
                         this.daySelector.updateSource(daySource);
+                        this.onChangedSelect();
                     }
                 });
             }
@@ -683,11 +1342,12 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                     el: this.pnlMonth,
                     type: 'infinite',
                     source: this.getMonths(),
-                    count: 20,
+                    count: COUNT,
                     onChange: (selected) => {
                         this.currentMonth = selected.value;
                         const daySource = this.getDays(this.currentYear, this.currentMonth);
                         this.daySelector.updateSource(daySource);
+                        this.onChangedSelect();
                     }
                 });
             }
@@ -727,15 +1387,97 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             }
             return days;
         }
-        onCloseSelect() {
+        onChangedSelect() {
+            const newDate = new Date(this.currentYear, this.currentMonth - 1, this.currentDay);
+            this._date = newDate.toISOString();
+            if (this.onChanged)
+                this.onChanged(this._date);
+        }
+        init() {
+            super.init();
+            this.onChanged = this.getAttribute('onChanged', true) || this.onChanged;
+            const date = this.getAttribute('date', true);
+            this.setData(date);
+        }
+        render() {
+            return (this.$render("i-panel", { width: '100%', height: '100%', class: select_css_1.selectorStyles },
+                this.$render("i-hstack", { id: "datePicker", position: 'absolute', top: "50%", left: "50%", verticalAlignment: "stretch", horizontalAlignment: 'space-between', class: "date-selector" },
+                    this.$render("i-panel", { class: "year", id: "pnlYear", stack: { grow: '1', shrink: '1' } }),
+                    this.$render("i-panel", { class: "month", id: "pnlMonth", stack: { grow: '1', shrink: '1' } }),
+                    this.$render("i-panel", { class: "date", id: "pnlDate", stack: { grow: '1', shrink: '1' } }))));
+        }
+    };
+    ScomCalendarDatePicker = __decorate([
+        components_6.customModule,
+        (0, components_6.customElements)('i-scom-calendar--date-picker')
+    ], ScomCalendarDatePicker);
+    exports.ScomCalendarDatePicker = ScomCalendarDatePicker;
+});
+define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/common/select.css.ts"], function (require, exports, components_7, select_css_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ScomCalendarSelect = void 0;
+    const Theme = components_7.Styles.Theme.ThemeVars;
+    let ScomCalendarSelect = class ScomCalendarSelect extends components_7.Module {
+        constructor(parent, options) {
+            super(parent, options);
+            this.onCancel = this.onCancel.bind(this);
+            this.onConfirm = this.onConfirm.bind(this);
+            this.onShowMonth = this.onShowMonth.bind(this);
+        }
+        static async create(options, parent) {
+            let self = new this(parent, options);
+            await self.ready();
+            return self;
+        }
+        get date() {
+            return this._data.date;
+        }
+        set date(value) {
+            this._data.date = value;
+        }
+        setData(data) {
+            this._data = data;
+            this.renderUI();
+        }
+        renderUI() {
+            this.initialDate = this.date ? new Date(this.date) : new Date();
+            this.iconLeft.visible = this.iconRight.visible = this.monthPicker.visible;
+            this.updateHeader();
+            this.datePicker.setData(this.date);
+            this.monthPicker.setData(this.date);
+        }
+        onCancel() {
             ;
+            this.datePicker.visible = true;
+            this, this.monthPicker.visible = false;
             if (this.onClose)
                 this.onClose();
         }
-        onChangedSelect() {
-            const newDate = new Date(this.currentYear, this.currentMonth - 1, this.currentDay);
+        onConfirm() {
+            const date = this.monthPicker.visible ? this.monthPicker.date : this.datePicker.date;
             if (this.onChanged)
-                this.onChanged(newDate.toISOString());
+                this.onChanged(date);
+        }
+        onShowMonth() {
+            this.monthPicker.visible = !this.monthPicker.visible;
+            const visible = this.monthPicker.visible;
+            this.datePicker.visible = !visible;
+            if (this.datePicker.visible) {
+                this.datePicker.display = 'flex';
+            }
+            this.iconLeft.visible = this.iconRight.visible = visible;
+        }
+        onMonthChanged(direction) {
+            const { month, year } = this.monthPicker.onSwipeFullMonth(direction);
+            this.initialDate.setMonth(month - 1);
+            this.initialDate.setFullYear(year);
+            this.monthPicker.date = this.initialDate.toISOString();
+            this.updateHeader();
+        }
+        updateHeader() {
+            const monthName = this.initialDate.toLocaleString('default', { month: 'short' });
+            this.lbDate.caption = `${this.initialDate.getFullYear()} ${monthName}`;
         }
         init() {
             super.init();
@@ -746,112 +1488,53 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
                 this.setData({ date });
         }
         render() {
-            return (this.$render("i-panel", { padding: { top: '2rem', bottom: '2rem', left: '2rem', right: '2rem' }, class: select_css_1.selectorStyles },
-                this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between', gap: '0.5rem' },
-                    this.$render("i-hstack", { gap: "1rem", horizontalAlignment: 'center' },
-                        this.$render("i-label", { id: "lbDate", caption: '' }),
-                        this.$render("i-icon", { name: "caret-up", width: '1rem', height: '1rem', fill: Theme.text.primary }))),
+            return (this.$render("i-panel", { padding: { top: '2rem', bottom: '2rem', left: '2rem', right: '2rem' }, class: select_css_2.selectorStyles },
+                this.$render("i-hstack", { verticalAlignment: 'center', gap: '1rem' },
+                    this.$render("i-panel", { stack: { shrink: '0' }, opacity: 0.36, hover: { opacity: 1 }, cursor: 'pointer' },
+                        this.$render("i-icon", { id: "iconLeft", padding: { left: '0.1875rem', right: '0.1875rem', top: '0.1875rem', bottom: '0.1875rem' }, name: 'angle-left', width: '1.5rem', height: '1.5rem', fill: Theme.text.primary, visible: false, onClick: () => this.onMonthChanged(-1) })),
+                    this.$render("i-hstack", { gap: "0.5rem", horizontalAlignment: 'center', verticalAlignment: 'start', cursor: 'pointer', onClick: this.onShowMonth },
+                        this.$render("i-label", { id: "lbDate", caption: '', font: { size: '1rem', weight: 500 } }),
+                        this.$render("i-icon", { name: "caret-down", width: '1rem', height: '1rem', fill: Theme.text.primary })),
+                    this.$render("i-panel", { stack: { shrink: '0' }, opacity: 0.36, hover: { opacity: 1 }, cursor: 'pointer' },
+                        this.$render("i-icon", { id: "iconRight", padding: { left: '0.1875rem', right: '0.1875rem', top: '0.1875rem', bottom: '0.1875rem' }, name: 'angle-right', width: '1.5rem', height: '1.5rem', fill: Theme.text.primary, visible: false, onClick: () => this.onMonthChanged(1) }))),
                 this.$render("i-vstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "1rem", minHeight: '50vh', position: 'relative' },
-                    this.$render("i-hstack", { position: 'absolute', top: "50%", left: "50%", verticalAlignment: "stretch", horizontalAlignment: 'space-between', class: "date-selector" },
-                        this.$render("i-panel", { class: "year", id: "pnlYear", stack: { grow: '1', shrink: '1' } }),
-                        this.$render("i-panel", { class: "month", id: "pnlMonth", stack: { grow: '1', shrink: '1' } }),
-                        this.$render("i-panel", { class: "date", id: "pnlDate", stack: { grow: '1', shrink: '1' } }))),
+                    this.$render("i-scom-calendar--date-picker", { id: "datePicker", display: 'block', width: '100%', height: '100%' }),
+                    this.$render("i-scom-calendar--month-picker", { id: "monthPicker", visible: false, width: "31.25rem", height: "auto", maxWidth: '100%', overflow: 'hidden' })),
                 this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between' },
-                    this.$render("i-button", { caption: 'Cancel', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, boxShadow: 'none', border: { radius: 0 }, onClick: this.onCloseSelect }),
-                    this.$render("i-button", { caption: 'Ok', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, border: { radius: 0 }, boxShadow: 'none', onClick: this.onChangedSelect }))));
+                    this.$render("i-button", { caption: 'Cancel', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, boxShadow: 'none', border: { radius: 0 }, onClick: this.onCancel }),
+                    this.$render("i-button", { caption: 'Ok', font: { weight: 600, size: '1rem', color: Theme.text.primary }, padding: { top: '0.5rem', bottom: '0.5rem', left: '1rem', right: '1rem' }, stack: { basis: '50%' }, background: { color: 'transparent' }, border: { radius: 0 }, boxShadow: 'none', onClick: this.onConfirm }))));
         }
     };
     ScomCalendarSelect = __decorate([
-        components_2.customModule,
-        (0, components_2.customElements)('i-scom-calendar--select')
+        components_7.customModule,
+        (0, components_7.customElements)('i-scom-calendar--select')
     ], ScomCalendarSelect);
     exports.ScomCalendarSelect = ScomCalendarSelect;
 });
-define("@scom/scom-calendar/common/index.ts", ["require", "exports", "@scom/scom-calendar/common/select.tsx", "@scom/scom-calendar/common/utils.ts"], function (require, exports, select_1, utils_2) {
+define("@scom/scom-calendar/common/index.ts", ["require", "exports", "@scom/scom-calendar/common/select.tsx", "@scom/scom-calendar/common/monthPicker.tsx", "@scom/scom-calendar/common/datePicker.tsx", "@scom/scom-calendar/common/view.tsx", "@scom/scom-calendar/common/utils.ts"], function (require, exports, select_1, monthPicker_1, datePicker_1, view_1, utils_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.ScomCalendarSelect = void 0;
+    exports.ScomCalendarView = exports.ScomCalendarDatePicker = exports.ScomCalendarMonthPicker = exports.ScomCalendarSelect = void 0;
     Object.defineProperty(exports, "ScomCalendarSelect", { enumerable: true, get: function () { return select_1.ScomCalendarSelect; } });
+    Object.defineProperty(exports, "ScomCalendarMonthPicker", { enumerable: true, get: function () { return monthPicker_1.ScomCalendarMonthPicker; } });
+    Object.defineProperty(exports, "ScomCalendarDatePicker", { enumerable: true, get: function () { return datePicker_1.ScomCalendarDatePicker; } });
+    Object.defineProperty(exports, "ScomCalendarView", { enumerable: true, get: function () { return view_1.ScomCalendarView; } });
     __exportStar(utils_2, exports);
 });
-define("@scom/scom-calendar/index.css.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_3) {
+define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/data/holidays.json.ts", "@scom/scom-calendar/common/index.ts"], function (require, exports, components_8, holidays_json_1, index_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.eventSliderStyle = exports.monthListStyle = exports.swipeStyle = exports.transitionStyle = void 0;
-    const Theme = components_3.Styles.Theme.ThemeVars;
-    exports.transitionStyle = components_3.Styles.style({
-        transition: 'height 0.3s ease'
-    });
-    exports.swipeStyle = components_3.Styles.style({
-        // scrollSnapType: 'x mandatory',
-        // "-webkit-scroll-snap-type": 'x mandatory',
-        // '-webkit-overflow-scrolling': 'unset',
-        // transition: 'transform 0.3s ease',
-        $nest: {
-            '.scroll-item': {
-                scrollSnapAlign: 'start'
-            },
-            '&::-webkit-scrollbar': {
-                height: 0
-            },
-        }
-    });
-    exports.monthListStyle = components_3.Styles.style({
-        $nest: {
-            '&:not(.--full) > .scroll-item > .scroll-item': {
-                gridTemplateRows: 55
-            }
-        }
-    });
-    exports.eventSliderStyle = components_3.Styles.style({
-        $nest: {
-            "> div": {
-                height: '100%'
-            }
-        }
-    });
-});
-define("@scom/scom-calendar/assets.ts", ["require", "exports", "@ijstech/components"], function (require, exports, components_4) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    const moduleDir = components_4.application.currentModuleDir;
-    function fullPath(path) {
-        return `${moduleDir}/${path}`;
-    }
-    ;
-    exports.default = {
-        fullPath
-    };
-});
-define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@scom/scom-calendar/data/holidays.json.ts", "@scom/scom-calendar/common/index.ts", "@scom/scom-calendar/index.css.ts", "@scom/scom-calendar/assets.ts", "@scom/scom-calendar/index.css.ts"], function (require, exports, components_5, holidays_json_1, index_1, index_css_1, assets_1) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    const Theme = components_5.Styles.Theme.ThemeVars;
-    const DATES_PER_SLIDE = 35;
-    const DAYS = 7;
-    const ROWS = 5;
-    const defaultHolidayColor = Theme.colors.info.main;
-    const defaultEventColor = Theme.colors.primary.main;
-    const currentColor = Theme.colors.secondary.main;
-    let ScomCalendar = class ScomCalendar extends components_5.Module {
+    const Theme = components_8.Styles.Theme.ThemeVars;
+    let ScomCalendar = class ScomCalendar extends components_8.Module {
         constructor(parent, options) {
             super(parent, options);
-            this.datesMap = new Map();
-            this.monthsMap = new Map();
-            this.selectedMap = new Map();
             this.initialDate = new Date();
-            this.currentDate = new Date();
-            this.filteredData = {};
             this.pos1 = { x: 0, y: 0 };
             this.pos2 = { x: 0, y: 0 };
-            this.oldMonth = '';
             this.datePnlHeight = 0;
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
-            this.viewMode = 'month';
-            this.initalDay = 0;
             this._events = [];
-            this.onFilterData = this.onFilterData.bind(this);
         }
         static async create(options, parent) {
             let self = new this(parent, options);
@@ -864,372 +1547,36 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         set events(value) {
             this._events = value ?? [];
         }
-        isCurrentDate(date) {
-            if (!date)
-                return false;
-            return this.currentDate.getDate() === date.date &&
-                this.currentDate.getMonth() + 1 === date.month &&
-                this.currentDate.getFullYear() === date.year;
-        }
-        get initialData() {
-            const month = this.initialDate.getMonth() + 1;
-            const year = this.initialDate.getFullYear();
-            const date = this.initialDate.getDate();
-            const day = this.initialDate.getDay();
-            return {
-                month,
-                year,
-                date,
-                day
-            };
-        }
-        get monthKey() {
-            return `${this.initialData.month}-${this.initialData.year}`;
-        }
-        get datesInMonth() {
-            const { month, year } = this.initialData;
-            let dates = [];
-            if (this.datesMap.has(this.monthKey)) {
-                dates = this.datesMap.get(this.monthKey);
-            }
-            else {
-                dates = this.getDates(month, year);
-            }
-            return dates;
-        }
-        get calendarData() {
-            const eventsMap = new Map();
-            for (let i = 0; i < this.datesInMonth.length; i++) {
-                const item = this.datesInMonth[i];
-                const holiday = this.getHoliday(item);
-                const events = this.getEvents(item);
-                const dateKey = `${item.date}-${item.month}-${item.year}`;
-                eventsMap.set(dateKey, { holiday, events });
-            }
-            return eventsMap;
-        }
-        get isWeekMode() {
-            return this.viewMode === 'week';
-        }
-        getDates(month, year) {
-            let dates = [];
-            const firstDay = new Date(year, month - 1, 1).getDay();
-            const daysInMonth = this.daysInMonth(month, year);
-            const prevMonthLastDate = new Date(year, month - 1, 0);
-            const prevMonth = prevMonthLastDate.getMonth() + 1;
-            const prevYear = prevMonthLastDate.getFullYear();
-            const prevDate = prevMonthLastDate.getDate();
-            const prevDateStr = `${prevMonth}/${prevDate}/${prevYear}`;
-            if (firstDay > 0) {
-                dates.unshift({ month: prevMonth, year: prevYear, date: prevDate, day: prevMonthLastDate.getDay() });
-                for (let i = 1; i < firstDay; i++) {
-                    const before = (0, components_5.moment)(prevDateStr).subtract(i, 'days');
-                    dates.unshift({ month: prevMonth, year: prevYear, date: before.get('date'), day: before.get('day') });
-                }
-            }
-            for (let i = 1; i <= daysInMonth; i++) {
-                const date = new Date(year, month - 1, i);
-                dates.push({ month, year, date: i, day: date.getDay() });
-            }
-            const fillingDates = DATES_PER_SLIDE - dates.length;
-            if (fillingDates > 0) {
-                for (let i = 1; i <= fillingDates; i++) {
-                    const after = (0, components_5.moment)(`${month}/${daysInMonth}-${year}`).add(i, 'days');
-                    dates.push({ month: month + 1, year: year, date: after.get('date'), day: after.get('day') });
-                }
-            }
-            return dates;
-        }
-        daysInMonth(month, year) {
-            return new Date(year, month, 0).getDate();
-        }
-        getEvents(item) {
-            const { year, month, date } = item;
-            return [...this.events].filter(event => {
-                const startDate = (0, components_5.moment)(event.startDate).startOf('day');
-                const endDate = (0, components_5.moment)(event.endDate).endOf('day');
-                const checkingDate = (0, components_5.moment)(`${month}/${date}/${year}`).startOf('day');
-                return startDate.isSameOrBefore(checkingDate) && checkingDate.isSameOrBefore(endDate);
-            });
-        }
-        getHoliday(item) {
-            const { year, month, date } = item;
-            const finded = holidays_json_1.default.find(holiday => {
-                return (0, components_5.moment)(holiday.date).isSame((0, components_5.moment)(`${month}/${date}/${year}`));
-            });
-            return finded;
-        }
         setData({ events }) {
-            this.initialDate = new Date();
-            this.clear();
             this.events = events;
-            this.renderUI();
+            this.calendarView.onSwiping = () => this.isVerticalSwiping || this.isHorizontalSwiping;
+            if (this.onEventClicked)
+                this.calendarView.onEventClicked = this.onEventClicked.bind(this);
+            this.calendarView.onDateClicked = this.onSelectedDate.bind(this);
+            this.calendarView.setData({
+                mode: 'full',
+                events: this.events,
+                holidays: holidays_json_1.default
+            });
+            this.updateHeader();
         }
-        renderUI(direction) {
-            const { month, year } = this.initialData;
-            const date = this.initialDate.getDate();
+        onSelectedDate(date) {
+            this.initialDate = new Date(date);
+            if (this.onDateClicked)
+                this.onDateClicked(date);
+        }
+        updateHeader() {
             const monthName = this.initialDate.toLocaleString('default', { month: 'short' });
-            this.inputAdd.placeholder = `Add event on ${monthName} ${date}`;
-            this.renderMonth(month, year, direction);
-            this.renderEventSlider();
-        }
-        clear() {
-            this.listStack.clearInnerHTML();
-            this.updateDatesHeight('100%');
-            this.viewMode = 'month';
-            this.pnlSelected.height = 0;
-            this.monthsMap = new Map();
-            this.selectedMap = new Map();
-            this.initalDay = this.initialDate.getDay();
-            this.currentDate = new Date();
-            this.filteredData = {};
-            this.style.setProperty('--grow', this.isWeekMode ? '1' : '0');
-            this.style.setProperty('--inner-grow', this.isWeekMode ? '0' : '1');
-        }
-        renderHeader() {
-            this.gridHeader.clearInnerHTML();
-            const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-            for (let i = 0; i < days.length; i++) {
-                const color = i === 0 ? Theme.colors.error.main : Theme.text.primary;
-                const el = this.$render("i-label", { caption: days[i], font: { size: '1rem', weight: 500, color }, opacity: 0.7, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, lineHeight: '1.5rem', class: "text-center" });
-                this.gridHeader.append(el);
-            }
-        }
-        renderMonth(month, year, direction) {
-            this.lbMonth.caption = (0, components_5.moment)(this.initialDate).format('MMM');
-            this.lbYear.caption = (0, components_5.moment)(this.initialDate).format('YYYY');
-            this.lbYear.visible = this.initialDate.getFullYear() !== this.currentDate.getFullYear();
-            const gridMonth = this.monthsMap.get(this.monthKey);
-            if (gridMonth) {
-                this.updateMonthUI(gridMonth);
-                return;
-            }
-            const gridDates = this.$render("i-stack", { direction: this.isWeekMode ? 'horizontal' : 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)', basis: '100%' }, overflow: { x: 'auto', y: 'hidden' }, class: `${index_css_1.swipeStyle} scroll-item`, position: 'relative' });
-            gridDates.setAttribute('data-month', this.monthKey);
-            for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: '100%' }, autoRowSize: 'auto', autoFillInHoles: true, position: 'relative' }));
-            }
-            const dates = [...this.datesInMonth];
-            for (let i = 0; i < dates.length; i++) {
-                const rowIndex = Math.floor(i / DAYS);
-                if (!gridDates.children[rowIndex])
-                    break;
-                const columnIndex = i % DAYS;
-                const item = dates[i];
-                const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
-                const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
-                const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
-                const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-                const { holiday, events } = this.calendarData.get(`${item.date}-${item.month}-${item.year}`);
-                const isSelectedDate = this.initialDate.getDate() === item.date;
-                const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
-                const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
-                    this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
-                el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
-                el.setAttribute('data-week', `${rowIndex}`);
-                if (holiday) {
-                    const holidayEl = this.renderHoliday(holiday, columnIndex);
-                    el.append(holidayEl);
-                }
-                if (events?.length) {
-                    for (let event of events) {
-                        const eventEl = this.renderEvent(event, columnIndex);
-                        el.append(eventEl);
-                    }
-                }
-                gridDates.children[rowIndex].append(el);
-                if (isSelectedDate) {
-                    this.updateOldDate();
-                    this.selectedDate = el;
-                }
-            }
-            const oldMonth = this.monthsMap.get(this.oldMonth);
-            this.listStack.append(gridDates);
-            if (oldMonth && direction) {
-                if (direction === 1) {
-                    this.listStack.insertBefore(oldMonth, gridDates);
-                }
-                else {
-                    this.listStack.insertBefore(gridDates, oldMonth);
-                }
-            }
-            this.datesMap.set(`${month}-${year}`, dates);
-            this.monthsMap.set(`${month}-${year}`, gridDates);
-            this.selectedMonth = gridDates;
-        }
-        renderEvent(event, columnIndex) {
-            // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
-            // const columnSpan = spanDays === 0 ? 1 : spanDays;
-            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
-                this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 }, textOverflow: 'ellipsis' })));
-            return eventEl;
-        }
-        renderHoliday(holiday, columnIndex) {
-            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'start' }, padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', overflow: 'hidden', cursor: 'pointer' },
-                this.$render("i-label", { caption: holiday.name, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', wordBreak: 'break-word', lineClamp: 2, font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } }));
-        }
-        renderEventSlider() {
-            const calendarData = this.calendarData;
-            const itemsData = [];
-            let activeIndex = 0;
-            const currentDate = this.initialDate.getDate();
-            const currentMonth = this.initialDate.getMonth() + 1;
-            for (let i = 0; i < this.datesInMonth.length; i++) {
-                const date = this.datesInMonth[i];
-                const { holiday, events } = calendarData.get(`${date.date}-${date.month}-${date.year}`);
-                const eventEl = this.renderSliderItem(date, holiday, events);
-                itemsData.push({
-                    name: '',
-                    controls: [eventEl]
-                });
-                if (currentDate === date.date && currentMonth === date.month) {
-                    activeIndex = i;
-                }
-            }
-            this.eventSlider.items = itemsData;
-            this.eventSlider.activeSlide = activeIndex;
-        }
-        renderSliderItem(item, holiday, events) {
-            const { date, month, year } = item;
-            const dateKey = `${date}-${month}-${year}`;
-            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
-            const selectedPanel = this.selectedMap.get(dateKey);
-            if (selectedPanel)
-                return;
-            const selectedWrap = (this.$render("i-vstack", { width: '100%', height: '100%', overflow: { y: 'auto' }, padding: { top: '0.5rem', bottom: '0.5rem', left: '0.75rem', right: '0.75rem' } }));
-            selectedWrap.setAttribute('data-slider-date', dateKey);
-            const caption = `${date} ${monthName}`;
-            selectedWrap.append(this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between', margin: { top: '1rem' }, width: '100%', overflow: 'hidden', stack: { shrink: '0' } },
-                this.$render("i-hstack", { gap: '0.5rem', verticalAlignment: 'center', horizontalAlignment: 'space-between' },
-                    this.$render("i-label", { caption: caption, font: { size: '0.75rem', weight: 600 } })),
-                this.$render("i-icon", { stack: { shrink: '0' }, width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'smile' })));
-            const eventsStack = this.$render("i-vstack", { width: "100%", gap: "1rem", margin: { top: '0.5rem' } });
-            selectedWrap.append(eventsStack);
-            if (!holiday && !events.length) {
-                eventsStack.append(this.$render("i-label", { margin: { top: '0.5rem' }, caption: 'No events', font: { size: '0.75rem', color: Theme.text.primary } }));
-            }
-            else {
-                this.renderSelectedHoliday(holiday, eventsStack);
-                for (let i = 0; i < events.length; i++) {
-                    this.renderSelectedEvent(events[i], eventsStack, i === events.length - 1);
-                }
-            }
-            return selectedWrap;
-        }
-        handleEventClick(data, event) {
-            if (this.onItemClicked)
-                this.onItemClicked(data, event);
-        }
-        renderSelectedEvent(event, parent, isLast) {
-            const startTime = (0, components_5.moment)(event.startDate).format('HH:mm');
-            const endTime = (0, components_5.moment)(event.endDate).format('HH:mm');
-            let iconAttr = {};
-            if (event.link?.startsWith('https://meet.google.com/')) {
-                iconAttr = { image: { url: assets_1.default.fullPath('img/google-drive.png'), width: '1rem', height: '1rem', display: 'inline-block' } };
-            }
-            else {
-                iconAttr = { width: '1rem', height: '1rem', name: 'globe' };
-            }
-            parent.appendChild(this.$render("i-panel", { border: { bottom: { width: '1px', style: isLast ? 'none' : 'solid', color: Theme.divider } }, cursor: 'pointer', onClick: (t, e) => this.handleEventClick(event, e) },
-                this.$render("i-hstack", { padding: { top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem' }, gap: '0.25rem', horizontalAlignment: 'space-between' },
-                    this.$render("i-hstack", { gap: '0.25rem', stack: { grow: '1' } },
-                        this.$render("i-hstack", { stack: { shrink: '0', basis: '2.5rem' } },
-                            this.$render("i-label", { caption: startTime, font: { size: '0.75rem', weight: 500 } })),
-                        this.$render("i-panel", { stack: { shrink: '0', basis: '3px' }, height: '1.25rem', width: 3, border: { radius: '0.25rem' }, margin: { right: '0.625rem' }, background: { color: event.color || defaultEventColor } }),
-                        this.$render("i-vstack", { gap: "0.25rem" },
-                            this.$render("i-label", { caption: event.title, font: { size: '1rem', weight: 500 } }),
-                            this.$render("i-label", { caption: `${startTime} - ${endTime}`, font: { size: '0.75rem', weight: 500 }, opacity: 0.36 }))),
-                    this.$render("i-icon", { cursor: 'pointer', stack: { shrink: '0' }, onClick: () => window.open(event.link, '_blank'), visible: !!event.link, ...iconAttr }))));
-        }
-        renderSelectedHoliday(holiday, parent) {
-            if (!holiday)
-                return;
-            parent.appendChild(this.$render("i-panel", null,
-                this.$render("i-hstack", { padding: { top: '0.75rem', bottom: '0.75rem', left: '0.5rem', right: '0.5rem' }, gap: '0.25rem' },
-                    this.$render("i-hstack", { stack: { shrink: '0', basis: '2.5rem' }, horizontalAlignment: 'center' },
-                        this.$render("i-icon", { width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'calendar' })),
-                    this.$render("i-panel", { stack: { shrink: '0', basis: '3px' }, height: '1.25rem', width: 3, border: { radius: '0.25rem' }, margin: { right: '0.625rem' }, background: { color: holiday?.color || defaultHolidayColor } }),
-                    this.$render("i-label", { caption: holiday.name, font: { size: '1rem', weight: 500 } }),
-                    this.$render("i-vstack", { verticalAlignment: 'center', margin: { left: 'auto' }, stack: { shrink: '0' } },
-                        this.$render("i-icon", { width: '0.75rem', height: '0.75rem', fill: Theme.text.primary, name: 'calendar-week' })))));
-        }
-        onDateClick(target, event, date) {
-            event.preventDefault();
-            event.stopPropagation();
-            if (this.isVerticalSwiping || this.isHorizontalSwiping)
-                return;
-            this.updateOldDate();
-            this.initialDate = new Date(date.year, date.month - 1, date.date);
-            this.initalDay = this.initialDate.getDay();
-            this.updateNewDate(target, date);
-            if (this.viewMode === 'month') {
-                this.updateDatesHeight('345px');
-                this.pnlSelected.height = 'auto';
-            }
-            const { month, year } = this.currentMonth || this.initialData;
-            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
-            this.eventSlider.activeSlide = index;
-            this.filteredData.date = date;
-            if (this.onFilter)
-                this.onFilter({ date });
-        }
-        updateOldDate() {
-            if (this.selectedDate) {
-                this.selectedDate.border.color = Theme.background.main;
-            }
-        }
-        updateNewDate(target, data) {
-            const { month, year, date } = data;
-            const monthName = new Date(year, month - 1, date).toLocaleString('default', { month: 'short' });
-            this.inputAdd.placeholder = `Add event on ${monthName} ${date}`;
-            if (target) {
-                this.selectedDate = target;
-                target.border = { radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important` };
-            }
-        }
-        updateDatesHeight(height) {
-            this.pnlDates.height = height;
-            if (height === '100%') {
-                this.listStack.classList.add('--full');
-            }
-            else {
-                this.listStack.classList.remove('--full');
-            }
-            let opacity = height === '345px' || height === '125px' ? '0' : '1';
-            this.style.setProperty('--event-opacity', opacity);
-            this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
-        }
-        onMonthChanged(direction) {
-            this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
-            this.initialDate.setMonth(this.initialDate.getMonth() + direction);
-            this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
-            this.renderUI(direction);
-        }
-        onFilterData(target) {
-            this.filteredData.type = target.caption;
-            if (this.onFilter)
-                this.onFilter({ type: target.caption });
-        }
-        onSlideChanged(index) {
-            const { month, year } = this.initialData;
-            const dates = this.datesMap.get(`${month}-${year}`);
-            const newDate = dates[index];
-            this.onSelectedDateChanged(newDate);
-        }
-        onSelectedDateChanged(data) {
-            this.updateOldDate();
-            const { date, month, year } = data;
-            this.initialDate = new Date(year, month - 1, date);
-            this.initalDay = this.initialDate.getDay();
-            const dataDate = `${date}-${month}-${year}`;
-            const target = this.listStack.querySelector(`[data-date="${dataDate}"]`);
-            this.updateNewDate(target, data);
+            this.lbMonth.caption = monthName;
+            const year = this.initialDate.getFullYear();
+            this.lbYear.caption = `${year}`;
+            this.lbYear.visible = year !== new Date().getFullYear();
         }
         _handleMouseDown(event, stopPropagation) {
             const result = super._handleMouseDown(event, stopPropagation);
             if (result !== undefined) {
                 const target = event.target;
-                const sliderList = target.closest('#listStack');
+                const sliderList = target.closest('#calendarView');
                 if (sliderList) {
                     this.dragStartHandler(event);
                     return true;
@@ -1241,7 +1588,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const result = super._handleMouseMove(event, stopPropagation);
             if (result !== undefined) {
                 const target = event.target;
-                const sliderList = target.closest('#listStack');
+                const sliderList = target.closest('#calendarView');
                 if (sliderList) {
                     this.dragHandler(event);
                     return true;
@@ -1253,7 +1600,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const result = super._handleMouseUp(event, stopPropagation);
             if (result !== undefined) {
                 const target = event.target;
-                const sliderList = target.closest('#listStack');
+                const sliderList = target.closest('#calendarView');
                 if (sliderList) {
                     this.dragEndHandler(event);
                     return true;
@@ -1276,7 +1623,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 };
             }
             this.pos2 = { x: 0, y: 0 };
-            this.datePnlHeight = this.pnlDates.offsetHeight;
+            const pnlDates = this.calendarView.querySelector('#pnlDates');
+            if (pnlDates) {
+                this.datePnlHeight = pnlDates.offsetHeight;
+            }
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
         }
@@ -1297,23 +1647,26 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 };
                 deltaX = event.clientX - this.pos1.x;
             }
-            const containerWidth = this.listStack.offsetWidth;
-            const containerHeight = this.pnlWrapper.offsetHeight;
+            const listStack = this.calendarView.querySelector('#listStack');
+            const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
+            const containerHeight = this.calendarView.offsetHeight;
             const horizontalThreshold = containerWidth * 0.1;
             const verticalThreshold = this.datePnlHeight * 0.1;
             if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < horizontalThreshold) {
                 this.isVerticalSwiping = true;
                 this.isHorizontalSwiping = false;
                 const newHeight = this.datePnlHeight + this.pos2.y;
+                let mode = 'full';
                 if (newHeight > containerHeight * 0.4 && this.pos2.y > verticalThreshold) {
-                    this.onSwipeFullMonth();
+                    mode = 'full';
                 }
                 else if (newHeight < containerHeight * 0.4 && this.pos2.y < -verticalThreshold) {
-                    this.onSwipeWeek();
+                    mode = 'week';
                 }
                 else {
-                    this.onSwipeMonthEvents();
+                    mode = 'month';
                 }
+                this.onSwipeView(undefined, mode);
                 return false;
             }
             else if (Math.abs(deltaX) >= horizontalThreshold) {
@@ -1338,154 +1691,48 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             else if (this.pos2.x > horizontalThreshold) {
                 direction = 1;
             }
-            if (this.viewMode === 'week') {
-                this.onSwipeWeek(direction);
+            const mode = this.calendarView.mode;
+            this.onSwipeView(direction, mode);
+        }
+        onSwipeView(direction, mode = 'full') {
+            let month = null;
+            let year = null;
+            if (mode === 'week') {
+                ({ month, year } = this.calendarView.onSwipeWeek(direction));
+            }
+            else if (mode === 'month') {
+                ({ month, year } = this.calendarView.onSwipeMonthEvents(direction));
             }
             else {
-                this.onSwipeFullMonth(direction);
+                ({ month, year } = this.calendarView.onSwipeFullMonth(direction));
             }
-        }
-        animateFn(framefn) {
-            const duration = 300;
-            const easing = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            const animateScroll = (timestamp) => {
-                const progress = Math.min(1, (timestamp - startTime) / duration);
-                const easedProgress = easing(progress);
-                framefn(easedProgress);
-                if (progress < 1) {
-                    requestAnimationFrame(animateScroll);
-                }
-            };
-            const startTime = performance.now();
-            requestAnimationFrame(animateScroll);
-        }
-        onSwipeFullMonth(direction) {
-            this.viewMode = 'month';
-            this.style.setProperty('--grow', '0');
-            this.style.setProperty('--inner-grow', '1');
-            if (direction) {
-                this.onMonthChanged(direction);
-                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+            if (month && year) {
+                this.initialDate.setMonth(month - 1);
+                this.initialDate.setFullYear(year);
+                this.updateHeader();
             }
-            else {
-                const { month, year } = this.initialData;
-                const monthEl = this.monthsMap.get(`${month}-${year}`);
-                if (monthEl)
-                    this.updateMonthUI(monthEl);
-                this.updateDatesHeight('100%');
-                this.pnlSelected.height = 0;
-            }
-        }
-        onSwipeMonthEvents() {
-            this.viewMode = 'month';
-            this.style.setProperty('--grow', '0');
-            this.style.setProperty('--inner-grow', '1');
-            this.updateDatesHeight('345px');
-            this.pnlSelected.height = 'auto';
-            const { date } = this.initialData;
-            const { month, year } = this.currentMonth || this.initialData;
-            const monthEl = this.monthsMap.get(`${month}-${year}`);
-            if (monthEl)
-                this.updateMonthUI(monthEl);
-            this.updateOldDate();
-            const dataDate = `${date}-${month}-${year}`;
-            const target = this.listStack.querySelector(`[data-date="${dataDate}"]`);
-            this.updateNewDate(target, { ...this.initialData });
-            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
-            this.eventSlider.activeSlide = index;
-        }
-        onSwipeWeek(direction) {
-            this.viewMode = 'week';
-            this.style.setProperty('--grow', '1');
-            this.style.setProperty('--inner-grow', '0');
-            this.updateDatesHeight('125px');
-            this.pnlSelected.height = 'auto';
-            const { month, year } = this.currentMonth || this.initialData;
-            let monthEl = this.monthsMap.get(`${month}-${year}`);
-            if (!monthEl)
-                return;
-            this.updateMonthUI(monthEl);
-            if (!direction) {
-                if (this.selectedDate) {
-                    const week = this.selectedDate.getAttribute('data-week') || 0;
-                    if (week) {
-                        const startScrollLeft = monthEl.scrollLeft;
-                        const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
-                        this.animateFn((progress) => {
-                            monthEl.scrollTo({
-                                left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
-                            });
-                        });
-                    }
-                }
-                return;
-            }
-            const threshold = this.listStack.offsetWidth * 3;
-            const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
-            if (outOfMonth) {
-                this.initialDate = new Date(year, month - 1, 1);
-                this.onMonthChanged(direction);
-                const { month: newMonth, year: newYear } = this.initialData;
-                const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
-                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
-                this.updateMonthUI(newMonthEl);
-                const factor = direction === 1 ? 0 : 4;
-                newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
-                this.activeDateWeek(newMonthEl, factor);
-            }
-            else {
-                this.onScroll(monthEl, direction, monthEl.offsetWidth);
-                const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
-                this.activeDateWeek(monthEl, week);
-            }
-        }
-        activeDateWeek(monthEl, week) {
-            const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
-            if (dateEl) {
-                this.updateOldDate();
-                const dateData = dateEl.getAttribute('data-date');
-                const [date, month, year] = dateData.split('-');
-                if (date) {
-                    this.initialDate = new Date(year, month - 1, Number(date));
-                    const { month: currentMonth } = this.currentMonth || this.initialData;
-                    const index = this.datesMap.get(`${currentMonth}-${year}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
-                    this.eventSlider.activeSlide = index;
-                    this.selectedDate = dateEl;
-                    dateEl.border = { radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important` };
-                }
-            }
-        }
-        updateMonthUI(month) {
-            month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
-            this.selectedMonth = month;
-        }
-        onScroll(parent, direction, cWidth) {
-            const containerWidth = this.listStack.offsetWidth + 2;
-            const startScrollLeft = parent.scrollLeft;
-            const additional = direction === -1 ? 2 : 0;
-            const targetScrollLeft = startScrollLeft + (direction * containerWidth) + additional;
-            this.animateFn((progress) => {
-                parent.scrollTo({
-                    left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
-                });
-            });
         }
         onChangeDate() {
+            const date = this.initialDate.toISOString();
             if (this.selectEl) {
-                this.selectEl.setData({ date: this.initialDate.toISOString() });
+                this.selectEl.setData({ date });
             }
             else {
                 this.selectEl = new index_1.ScomCalendarSelect(undefined, {
-                    date: this.initialDate.toISOString(),
+                    date,
                     onClose: () => {
                         this.selectEl.closeModal();
                     },
                     onChanged: (date) => {
                         this.selectEl.closeModal();
+                        this.calendarView.setData({
+                            mode: 'full',
+                            events: this.events,
+                            holidays: holidays_json_1.default,
+                            date
+                        });
                         this.initialDate = new Date(date);
-                        this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
-                        this.clear();
-                        this.renderUI();
+                        this.updateHeader();
                     }
                 });
             }
@@ -1495,37 +1742,27 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 width: 'calc(100vw - 2rem)',
                 height: 'auto',
                 closeIcon: null,
+                closeOnBackdropClick: false,
                 border: { radius: '1rem' }
             });
         }
         init() {
             super.init();
-            this.onFilter = this.getAttribute('onFilter', true) || this.onFilter;
-            this.onItemClicked = this.getAttribute('onItemClicked', true) || this.onItemClicked;
+            this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
             const events = this.getAttribute('events', true);
-            this.renderHeader();
             this.setData({ events });
         }
         render() {
             return (this.$render("i-panel", { overflow: 'hidden', background: { color: Theme.background.main }, width: '100%', height: "100%" },
-                this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: "100%", overflow: 'hidden', gap: "1rem" },
-                    this.$render("i-vstack", { id: "pnlDates", minHeight: 100, maxHeight: '99%', padding: { top: '0.5rem', left: '0.75rem', right: '0.75rem' }, overflow: 'hidden', class: index_css_1.transitionStyle },
-                        this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'center', gap: "0.25rem", cursor: 'pointer', onClick: this.onChangeDate.bind(this) },
-                            this.$render("i-label", { id: "lbMonth", font: { size: '1.25rem', weight: 600 } }),
-                            this.$render("i-label", { id: "lbYear", font: { size: '1.25rem', color: Theme.text.secondary } })),
-                        this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
-                        this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: `${index_css_1.swipeStyle} ${index_css_1.monthListStyle}`, stack: { grow: '1' } })),
-                    this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: '0' }, minHeight: 0, height: 0, overflow: 'hidden' },
-                        this.$render("i-carousel-slider", { id: "eventSlider", class: index_css_1.eventSliderStyle, swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))),
-                this.$render("i-panel", { position: 'fixed', bottom: "0px", left: "0px", zIndex: 999, width: '100%', padding: { top: '0.5rem', bottom: '0.5rem', left: '0.5rem', right: '0.5rem' }, visible: false },
-                    this.$render("i-hstack", { verticalAlignment: 'center', horizontalAlignment: 'space-between', gap: '1rem' },
-                        this.$render("i-input", { id: "inputAdd", placeholder: "Add event on", border: { radius: '9999px', width: '1px', style: 'solid', color: Theme.divider }, height: '3.125rem', width: '100%', font: { size: '1rem' }, padding: { top: '0.25rem', bottom: '0.25rem', left: '1.25rem', right: '1.25rem' }, boxShadow: 'none' }),
-                        this.$render("i-button", { id: "btnAdd", icon: { name: 'plus', width: '1rem', height: '1rem', fill: Theme.text.primary }, background: { color: 'transparent' }, border: { radius: '9999px' }, height: 50, width: 50, stack: { shrink: '0' } })))));
+                this.$render("i-hstack", { id: "pnlHeader", verticalAlignment: 'center', horizontalAlignment: 'center', gap: "0.25rem", cursor: 'pointer', onClick: this.onChangeDate },
+                    this.$render("i-label", { id: "lbMonth", font: { size: '1.25rem', weight: 600 } }),
+                    this.$render("i-label", { id: "lbYear", font: { size: '1.25rem', color: Theme.text.secondary } })),
+                this.$render("i-scom-calendar--view", { id: "calendarView" })));
         }
     };
     ScomCalendar = __decorate([
-        components_5.customModule,
-        (0, components_5.customElements)('i-scom-calendar')
+        components_8.customModule,
+        (0, components_8.customElements)('i-scom-calendar')
     ], ScomCalendar);
     exports.default = ScomCalendar;
 });

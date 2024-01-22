@@ -36,7 +36,7 @@ export class IosSelector {
     let defaults = {
       el: null, // dom 
       type: 'infinite', // infinite 无限滚动，normal 非无限 
-      count: 20, // 圆环规格，圆环上选项个数，必须设置 4 的倍数
+      count: 4, // 圆环规格，圆环上选项个数，必须设置 4 的倍数
       sensitivity: 0.8, // 灵敏度
       source: [], // 选项 {value: xx, text: xx}
       value: null,
@@ -274,11 +274,11 @@ export class IosSelector {
     this.elems.highListItems = this.elems.el.querySelectorAll('.highlight-item');
 
     if (this.type === 'infinite') {
-      this.elems.highlightList.style.top = -(this.itemHeight + this.itemHeight * 0.5) + 'px';
+      this.elems.highlightList.style.top = -(this.itemHeight + 20) + 'px'; // TODO
     }
 
     this.elems.highlight.style.height = this.itemHeight + 'px';
-    this.elems.highlight.style.lineHeight = `${this.itemHeight + 2}px`;
+    this.elems.highlight.style.lineHeight = `${this.itemHeight}px`;
   }
 
   /**
