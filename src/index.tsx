@@ -53,6 +53,7 @@ export default class ScomCalendar extends Module {
 
   constructor(parent?: Container, options?: any) {
     super(parent, options);
+    this.onUpdateMonth = this.onUpdateMonth.bind(this);
   }
 
   static async create(options?: ScomCalendarElement, parent?: Container) {
@@ -80,6 +81,7 @@ export default class ScomCalendar extends Module {
       holidays: holidayList
     });
     this.updateHeader();
+    this.maxHeight = window.innerHeight;
   }
 
   private onSelectedDate(date: string) {
@@ -99,7 +101,7 @@ export default class ScomCalendar extends Module {
     const result = super._handleMouseDown(event, stopPropagation);
     if (result !== undefined) {
       const target = event.target as HTMLElement;
-      const sliderList = target.closest('#calendarView');
+      const sliderList = target.closest('#pnlDates');
       if (sliderList) {
         this.dragStartHandler(event);
         return true;
@@ -112,7 +114,7 @@ export default class ScomCalendar extends Module {
     const result = super._handleMouseMove(event, stopPropagation);
     if (result !== undefined) {
       const target = event.target as HTMLElement;
-      const sliderList = target.closest('#calendarView');
+      const sliderList = target.closest('#pnlDates');
       if (sliderList) {
         this.dragHandler(event);
         return true;
@@ -125,7 +127,7 @@ export default class ScomCalendar extends Module {
     const result = super._handleMouseUp(event, stopPropagation);
     if (result !== undefined) {
       const target = event.target as HTMLElement;
-      const sliderList = target.closest('#calendarView');
+      const sliderList = target.closest('#pnlDates');
       if (sliderList) {
         this.dragEndHandler(event);
         return true;
@@ -219,15 +221,17 @@ export default class ScomCalendar extends Module {
   }
 
   private onSwipeView(direction?: 1 | -1, mode: IViewMode = 'full') {
-    let month = null;
-    let year = null;
     if (mode === 'week') {
-      ({ month, year } = this.calendarView.onSwipeWeek(direction));
+      this.calendarView.onSwipeWeek(direction);
     } else if (mode === 'month') {
-      ({ month, year } = this.calendarView.onSwipeMonthEvents(direction));
+      this.calendarView.onSwipeMonthEvents(direction);
     } else {
-      ({ month, year } = this.calendarView.onSwipeFullMonth(direction));
+      this.calendarView.onSwipeFullMonth(direction);
     }
+  }
+
+  private onUpdateMonth(data: { month: number, year: number }) {
+    const { month, year } = data;
     if (month && year) {
       this.initialDate.setMonth(month - 1);
       this.initialDate.setFullYear(year);
@@ -278,10 +282,11 @@ export default class ScomCalendar extends Module {
 
   render(): void {
     return (
-      <i-panel
-        overflow={'hidden'}
+      <i-vstack
         background={{color: Theme.background.main}}
-        width='100%' height="100%"
+        width='100%'
+        height={'100%'}
+        maxHeight="-webkit-fill-available"
       >
         <i-hstack
           id="pnlHeader"
@@ -292,8 +297,15 @@ export default class ScomCalendar extends Module {
           <i-label id="lbMonth" font={{size: '1.25rem', weight: 600}}></i-label>
           <i-label id="lbYear" font={{size: '1.25rem', color: Theme.text.secondary}}></i-label>
         </i-hstack>
-        <i-scom-calendar--view id="calendarView" />
-      </i-panel>
+        <i-scom-calendar--view
+          id="calendarView"
+          stack={{grow: '1'}}
+          onMonthChanged={this.onUpdateMonth}
+          display='flex'
+          maxHeight={'100%'}
+          overflow={'hidden'}
+        />
+      </i-vstack>
     )
   }
 }

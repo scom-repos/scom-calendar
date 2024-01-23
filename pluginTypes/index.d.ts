@@ -77,6 +77,10 @@ declare module "@scom/scom-calendar/common/view.tsx" {
     type callbackType = (data: IEvent, event: MouseEvent) => void;
     type swipeCallbackType = () => boolean;
     type selectCallbackType = (date: string) => void;
+    type onMonthChangedCallbackType = (value: {
+        month: number;
+        year: number;
+    }) => void;
     interface ScomCalendarViewElement extends ControlElement {
         holidays?: IHoliday[];
         events?: IEvent[];
@@ -86,6 +90,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         onEventClicked?: callbackType;
         onDateClicked?: selectCallbackType;
         onSwiping?: swipeCallbackType;
+        onMonthChanged?: onMonthChangedCallbackType;
     }
     interface IViewData {
         holidays?: IHoliday[];
@@ -120,6 +125,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
         onSwiping: swipeCallbackType;
+        onMonthChanged: onMonthChangedCallbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarViewElement, parent?: Container): Promise<ScomCalendarView>;
         get holidays(): IHoliday[];
@@ -158,7 +164,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private updateOldDate;
         private updateNewDate;
         private updateDatesHeight;
-        private onMonthChanged;
+        private onMonthChangedFn;
         private onSlideChanged;
         private onSelectedDateChanged;
         private animateFn;
@@ -166,14 +172,8 @@ declare module "@scom/scom-calendar/common/view.tsx" {
             month: number;
             year: number;
         };
-        onSwipeMonthEvents(direction?: 1 | -1): {
-            month: number;
-            year: number;
-        };
-        onSwipeWeek(direction?: 1 | -1): {
-            month: number;
-            year: number;
-        };
+        onSwipeMonthEvents(direction?: 1 | -1): void;
+        onSwipeWeek(direction?: 1 | -1): void;
         private activeDateWeek;
         private updateMonthUI;
         private onScroll;
@@ -420,6 +420,7 @@ declare module "@scom/scom-calendar" {
         private dragHandler;
         private dragEndHandler;
         private onSwipeView;
+        private onUpdateMonth;
         private onChangeDate;
         init(): void;
         render(): void;
