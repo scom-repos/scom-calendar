@@ -228,14 +228,8 @@ define("@scom/scom-calendar/common/view.css.ts", ["require", "exports", "@ijstec
         transition: 'height 0.3s ease'
     });
     exports.swipeStyle = components_2.Styles.style({
-        // scrollSnapType: 'x mandatory',
-        // "-webkit-scroll-snap-type": 'x mandatory',
-        // '-webkit-overflow-scrolling': 'unset',
         // transition: 'transform 0.3s ease',
         $nest: {
-            '.scroll-item': {
-                scrollSnapAlign: 'start'
-            },
             '&::-webkit-scrollbar': {
                 height: 0
             },
@@ -693,7 +687,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
             if (direction) {
                 this.onMonthChanged(direction);
-                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+                this.onScroll(this.listStack, direction);
             }
             else {
                 const { month, year } = this.initialData;
@@ -714,7 +708,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.pnlSelected.height = 'auto';
             if (direction) {
                 this.onMonthChanged(direction);
-                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+                this.onScroll(this.listStack, direction);
             }
             const { date } = this.initialData;
             const { month, year } = this.currentMonth || this.initialData;
@@ -763,14 +757,14 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.onMonthChanged(direction);
                 const { month: newMonth, year: newYear } = this.initialData;
                 const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
-                this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+                this.onScroll(this.listStack, direction);
                 this.updateMonthUI(newMonthEl);
                 const factor = direction === 1 ? 0 : 4;
                 newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
                 this.activeDateWeek(newMonthEl, factor);
             }
             else {
-                this.onScroll(monthEl, direction, monthEl.offsetWidth);
+                this.onScroll(monthEl, direction);
                 const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
                 this.activeDateWeek(monthEl, week);
             }
@@ -795,11 +789,11 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
         updateMonthUI(month) {
             month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
         }
-        onScroll(parent, direction, cWidth) {
-            const containerWidth = this.listStack.offsetWidth + 2;
-            const startScrollLeft = parent.scrollLeft;
-            const additional = direction === -1 ? 2 : 0;
-            const targetScrollLeft = startScrollLeft + (direction * containerWidth) + additional;
+        onScroll(parent, direction) {
+            const containerWidth = this.listStack.offsetWidth;
+            const index = Math.round(parent.scrollLeft / containerWidth);
+            const startScrollLeft = index * containerWidth;
+            const targetScrollLeft = startScrollLeft + (direction * containerWidth);
             this.animateFn((progress) => {
                 parent.scrollTo({
                     left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
@@ -817,11 +811,13 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const date = this.getAttribute('date', true);
             const isPicker = this.getAttribute('isPicker', true, false);
             this.renderHeader();
-            this.setData({ holidays, events, mode, date });
+            this.setData({ holidays, events, mode, date, isPicker });
         }
         render() {
             return (this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: "100%", overflow: 'hidden', gap: "1rem" },
-                this.$render("i-vstack", { id: "pnlDates", maxHeight: '100%', padding: { top: '0.5rem', left: '0.75rem', right: '0.75rem' }, overflow: 'hidden', class: view_css_1.transitionStyle },
+                this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', 
+                    // padding={{top: '0.5rem', left: '0.75rem', right: '0.75rem'}}
+                    overflow: 'hidden', class: view_css_1.transitionStyle },
                     this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                     this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: `${view_css_1.swipeStyle} ${view_css_1.monthListStyle}`, stack: { grow: '1' } })),
                 this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: '0' }, minHeight: 0, height: 0, overflow: 'hidden' },

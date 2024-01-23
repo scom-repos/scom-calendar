@@ -690,7 +690,7 @@ export class ScomCalendarView extends Module {
     this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
     if (direction) {
       this.onMonthChanged(direction);
-      this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+      this.onScroll(this.listStack, direction);
     } else {
       const { month, year } = this.initialData;
       const monthEl = this.monthsMap.get(`${month}-${year}`);
@@ -711,7 +711,7 @@ export class ScomCalendarView extends Module {
 
     if (direction) {
       this.onMonthChanged(direction);
-      this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+      this.onScroll(this.listStack, direction);
     }
 
     const { date } = this.initialData;
@@ -764,13 +764,13 @@ export class ScomCalendarView extends Module {
       this.onMonthChanged(direction);
       const { month: newMonth, year: newYear } = this.initialData;
       const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
-      this.onScroll(this.listStack, direction, this.listStack.offsetWidth);
+      this.onScroll(this.listStack, direction);
       this.updateMonthUI(newMonthEl);
       const factor = direction === 1 ? 0 : 4;
       newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
       this.activeDateWeek(newMonthEl, factor);
     } else {
-      this.onScroll(monthEl, direction, monthEl.offsetWidth);
+      this.onScroll(monthEl, direction);
       const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
       this.activeDateWeek(monthEl, week);
     }
@@ -798,11 +798,11 @@ export class ScomCalendarView extends Module {
     month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
   }
 
-  private onScroll(parent: Control, direction: 1 | -1, cWidth: number) {
-    const containerWidth = this.listStack.offsetWidth + 2;
-    const startScrollLeft = parent.scrollLeft;
-    const additional = direction === -1 ? 2 : 0;
-    const targetScrollLeft = startScrollLeft + (direction * containerWidth) + additional;
+  private onScroll(parent: Control, direction: 1 | -1) {
+    const containerWidth = this.listStack.offsetWidth;
+    const index = Math.round(parent.scrollLeft / containerWidth);
+    const startScrollLeft = index * containerWidth;
+    const targetScrollLeft = startScrollLeft + (direction * containerWidth);
     this.animateFn((progress: number) => {
       parent.scrollTo({
         left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
@@ -821,7 +821,7 @@ export class ScomCalendarView extends Module {
     const date = this.getAttribute('date', true);
     const isPicker = this.getAttribute('isPicker', true, false);
     this.renderHeader();
-    this.setData({ holidays, events, mode, date });
+    this.setData({ holidays, events, mode, date, isPicker });
   }
 
   render(): void {
@@ -834,8 +834,9 @@ export class ScomCalendarView extends Module {
       >
         <i-vstack
           id="pnlDates"
+          width={'100%'}
           maxHeight={'100%'}
-          padding={{top: '0.5rem', left: '0.75rem', right: '0.75rem'}}
+          // padding={{top: '0.5rem', left: '0.75rem', right: '0.75rem'}}
           overflow={'hidden'}
           class={transitionStyle}
         >
