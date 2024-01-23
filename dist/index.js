@@ -1774,6 +1774,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 border: { radius: '1rem' }
             });
         }
+        refresh() {
+            super.refresh();
+            this.maxHeight = window.innerHeight;
+        }
         init() {
             super.init();
             this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
