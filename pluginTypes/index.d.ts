@@ -422,6 +422,7 @@ declare module "@scom/scom-calendar" {
         private onSwipeView;
         private onUpdateMonth;
         private onChangeDate;
+        refresh(): void;
         init(): void;
         render(): void;
     }
