@@ -311,8 +311,7 @@ export class ScomCalendarView extends Module {
           templateColumns={[`repeat(${DAYS}, 1fr)`]}
           gap={{ column: '0.25rem' }}
           stack={{shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)'}}
-          autoRowSize='auto'
-          autoFillInHoles={true}
+          overflow={{x: 'auto', y: 'hidden'}}
           position='relative'
         ></i-grid-layout>
       )
@@ -393,7 +392,7 @@ export class ScomCalendarView extends Module {
         grid={{column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start'}}
         border={{radius: '0.25rem'}}
         background={{color: event.color || defaultEventColor}}
-        minHeight={3} maxHeight={'100%'}
+        minHeight={'var(--event-min-height, 3px)'} maxHeight={'100%'}
         height={'var(--event-height, auto)'}
         padding={{left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem'}}
         overflow={'hidden'}
@@ -417,7 +416,8 @@ export class ScomCalendarView extends Module {
       background={{color: defaultHolidayColor}}
       grid={{column: columnIndex + 1, verticalAlignment: 'start'}}
       padding={{left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem'}}
-      minHeight={3} maxHeight={'100%'}
+      maxHeight={'100%'}
+      minHeight={'var(--event-min-height, 3px)'}
       height={'var(--event-height, auto)'}
       overflow={'hidden'}
       cursor='pointer'
@@ -652,6 +652,7 @@ export class ScomCalendarView extends Module {
     let opacity = height === '345px' || height === '125px' ? '0' : '1';
     this.style.setProperty('--event-opacity', opacity);
     this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
+    this.style.setProperty('--event-min-height', opacity === '0' ? '0px' : '20px');
   }
 
   private onMonthChangedFn(direction: 1 | -1) {

@@ -462,7 +462,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const gridDates = this.$render("i-stack", { direction: this.isWeekMode ? 'horizontal' : 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} scroll-item`, position: 'relative' });
             gridDates.setAttribute('data-month', this.monthKey);
             for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, autoRowSize: 'auto', autoFillInHoles: true, position: 'relative' }));
+                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', class: "scroll-item", templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative' }));
             }
             const dates = [...this.datesInMonth];
             for (let i = 0; i < dates.length; i++) {
@@ -514,12 +514,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
         renderEvent(event, columnIndex) {
             // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
             // const columnSpan = spanDays === 0 ? 1 : spanDays;
-            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
+            const eventEl = (this.$render("i-vstack", { grid: { column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start' }, border: { radius: '0.25rem' }, background: { color: event.color || defaultEventColor }, minHeight: 'var(--event-min-height, 3px)', maxHeight: '100%', height: 'var(--event-height, auto)', padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, overflow: 'hidden', cursor: 'pointer' },
                 this.$render("i-label", { caption: event.title, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 }, textOverflow: 'ellipsis' })));
             return eventEl;
         }
         renderHoliday(holiday, columnIndex) {
-            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'start' }, padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, minHeight: 3, maxHeight: '100%', height: 'var(--event-height, auto)', overflow: 'hidden', cursor: 'pointer' },
+            return this.$render("i-vstack", { border: { radius: '0.25rem' }, background: { color: defaultHolidayColor }, grid: { column: columnIndex + 1, verticalAlignment: 'start' }, padding: { left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem' }, maxHeight: '100%', minHeight: 'var(--event-min-height, 3px)', height: 'var(--event-height, auto)', overflow: 'hidden', cursor: 'pointer' },
                 this.$render("i-label", { caption: holiday.name, opacity: 'var(--event-opacity, 1)', lineHeight: '1rem', wordBreak: 'break-word', lineClamp: 2, font: { size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500 } }));
         }
         renderEventSlider() {
@@ -655,6 +655,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             let opacity = height === '345px' || height === '125px' ? '0' : '1';
             this.style.setProperty('--event-opacity', opacity);
             this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
+            this.style.setProperty('--event-min-height', opacity === '0' ? '0px' : '20px');
         }
         onMonthChangedFn(direction) {
             this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
@@ -1559,6 +1560,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.datePnlHeight = 0;
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
+            this.swippingType = '';
             this._events = [];
             this.onUpdateMonth = this.onUpdateMonth.bind(this);
         }
@@ -1656,6 +1658,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             }
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
+            this.swippingType = '';
         }
         dragHandler(event) {
             event.preventDefault();
@@ -1722,6 +1725,9 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.onSwipeView(direction, mode);
         }
         onSwipeView(direction, mode = 'full') {
+            if (this.swippingType === mode)
+                return;
+            this.swippingType = mode;
             if (mode === 'week') {
                 this.calendarView.onSwipeWeek(direction);
             }

@@ -401,6 +401,7 @@ declare module "@scom/scom-calendar" {
         private datePnlHeight;
         private isVerticalSwiping;
         private isHorizontalSwiping;
+        private swippingType;
         private _events;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
