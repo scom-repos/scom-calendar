@@ -43,9 +43,9 @@ export default class ScomCalendar extends Module {
   private pos1: IPos = { x: 0, y: 0 };
   private pos2: IPos = { x: 0, y: 0 };
   private datePnlHeight: number = 0;
+  private hThreshold: number = 30;
   private isVerticalSwiping: boolean = false;
   private isHorizontalSwiping: boolean = false;
-  private swippingType: string = '';
 
   private _events: IEvent[] = [];
 
@@ -157,11 +157,12 @@ export default class ScomCalendar extends Module {
     }
     this.isVerticalSwiping = false;
     this.isHorizontalSwiping = false;
-    this.swippingType = '';
   }
 
   private dragHandler(event: MouseEvent | TouchEvent) {
-    event.preventDefault();
+    if (event.cancelable) {
+      event.preventDefault();
+    }
     let deltaX = 0;
     if (event instanceof TouchEvent) {
       this.pos2 = {
@@ -177,26 +178,26 @@ export default class ScomCalendar extends Module {
       deltaX = event.clientX - this.pos1.x;
     }
 
-    const listStack = this.calendarView.querySelector('#listStack') as Control;
-    const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
-    const containerHeight = this.calendarView.offsetHeight;
-    const horizontalThreshold = containerWidth * 0.1;
+    // const listStack = this.calendarView.querySelector('#listStack') as Control;
+    // const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
+    // const containerHeight = this.calendarView.offsetHeight;
+    // const hThreshold = containerWidth * 0.1;
     const verticalThreshold = this.datePnlHeight * 0.1;
-    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < horizontalThreshold) {
+    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < this.hThreshold) {
       this.isVerticalSwiping = true;
       this.isHorizontalSwiping = false;
       const newHeight = this.datePnlHeight + this.pos2.y;
       let mode: IViewMode = 'full';
-      if (newHeight > containerHeight * 0.4 && this.pos2.y > verticalThreshold) {
+      if (newHeight > 345 && this.pos2.y > verticalThreshold) {
         mode = 'full';
-      } else if (newHeight < containerHeight * 0.4 && this.pos2.y < -verticalThreshold) {
+      } else if (newHeight < 345 && this.pos2.y < -verticalThreshold) {
         mode = 'week';
       } else {
         mode = 'month';
       }
-      this.onSwipeView(undefined, mode);
+      this.calendarView.mode = mode;
       return false;
-    } else if (Math.abs(deltaX) >= horizontalThreshold) {
+    } else if (Math.abs(deltaX) >= this.hThreshold) {
       this.isVerticalSwiping = false;
       this.isHorizontalSwiping = true;
     } else {
@@ -206,25 +207,23 @@ export default class ScomCalendar extends Module {
   }
 
   private dragEndHandler(event: MouseEvent | TouchEvent) {
-    if (this.isVerticalSwiping || !this.isHorizontalSwiping) {
-      event.preventDefault();
+    if (this.isVerticalSwiping) {
+      const mode = this.calendarView.mode;
+      this.onSwipeView(undefined, mode);
       return false;
+    } else if (this.isHorizontalSwiping) {
+      let direction: 1 | -1 = 1;
+      if (this.pos2.x < -this.hThreshold) {
+        direction = -1;
+      } else if (this.pos2.x > this.hThreshold) {
+        direction = 1;
+      }
+      const mode = this.calendarView.mode;
+      this.onSwipeView(direction, mode);
     }
-
-    const horizontalThreshold = 30;
-    let direction: 1 | -1 = 1;
-    if (this.pos2.x < -horizontalThreshold) {
-      direction = -1;
-    } else if (this.pos2.x > horizontalThreshold) {
-      direction = 1;
-    }
-    const mode = this.calendarView.mode;
-    this.onSwipeView(direction, mode);
   }
 
   private onSwipeView(direction?: 1 | -1, mode: IViewMode = 'full') {
-    if (this.swippingType === mode) return;
-    this.swippingType = mode;
     if (mode === 'week') {
       this.calendarView.onSwipeWeek(direction);
     } else if (mode === 'month') {

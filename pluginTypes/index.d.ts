@@ -61,6 +61,13 @@ declare module "@scom/scom-calendar/common/view.css.ts" {
     export const swipeStyle: string;
     export const monthListStyle: string;
     export const eventSliderStyle: string;
+    export interface IViewStyle {
+        event: any;
+        border: string;
+        month: any;
+        week: any;
+    }
+    export const getViewStyle: (value: IViewStyle) => string;
 }
 /// <amd-module name="@scom/scom-calendar/assets.ts" />
 declare module "@scom/scom-calendar/assets.ts" {
@@ -121,6 +128,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private oldMonth;
         private initalDay;
         private currentMonth;
+        private currentStyle;
         private _data;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
@@ -151,6 +159,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         setData(data: IViewData): void;
         private renderUI;
         clear(): void;
+        private updateStyle;
         private renderHeader;
         private renderMonth;
         private renderEvent;
@@ -175,7 +184,6 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         onSwipeMonthEvents(direction?: 1 | -1): void;
         onSwipeWeek(direction?: 1 | -1): void;
         private activeDateWeek;
-        private updateMonthUI;
         private onScroll;
         init(): void;
         render(): void;
@@ -399,9 +407,9 @@ declare module "@scom/scom-calendar" {
         private pos1;
         private pos2;
         private datePnlHeight;
+        private hThreshold;
         private isVerticalSwiping;
         private isHorizontalSwiping;
-        private swippingType;
         private _events;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
