@@ -15,7 +15,7 @@ import {
   StackLayout
 } from '@ijstech/components'
 import { IDate, IEvent, IHoliday, IViewMode } from '../interface'
-import { eventSliderStyle, monthListStyle, swipeStyle, transitionStyle } from './view.css';
+import { IViewStyle, eventSliderStyle, getViewStyle, monthListStyle, swipeStyle, transitionStyle } from './view.css';
 import assets from '../assets';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -77,6 +77,7 @@ export class ScomCalendarView extends Module {
   private oldMonth: string = '';
   private initalDay: number = 0;
   private currentMonth: { month: number, year: number };
+  private currentStyle: string = '';
 
   private _data: IViewData;
 
@@ -129,7 +130,6 @@ export class ScomCalendarView extends Module {
   set isPicker(value: boolean) {
     this._data.isPicker = value ?? false;
   }
-
 
   private isCurrentDate(date: IDate) {
     if (!date) return false;
@@ -254,18 +254,34 @@ export class ScomCalendarView extends Module {
 
   clear() {
     this.listStack.clearInnerHTML();
-    this.updateDatesHeight('100%');
     this.mode = 'full';
-    this.pnlSelected.height = 0;
-    this.pnlSelected.stack = {grow: '0', shrink: '1', basis: '0%'};
     this.monthsMap = new Map();
     this.selectedMap = new Map();
     this.initalDay = this.initialDate.getDay();
     this.currentDate = new Date();
-    this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
-    this.style.setProperty('--grow', this.isWeekMode ? '1' : '0');
-    this.style.setProperty('--inner-grow', this.isWeekMode ? '0' : '1');
-    this.style.setProperty('--inner-basis', this.isWeekMode ? '100%' : '20%');
+    const { event } = this.updateDatesHeight('100%');
+    this.updateStyle({
+      month: { grow: this.isWeekMode ? '1' : '0', direction: this.isWeekMode ? 'row' : 'column' },
+      week: { grow: this.isWeekMode ? '0' : '1', basis: this.isWeekMode ? '100%' : '20%' },
+      border: this.isPicker ? Theme.background.main : Theme.divider,
+      event
+    });
+  }
+
+  private updateStyle(value: IViewStyle) {
+    const { border, month, week, event } = value;
+    this.style.setProperty('--border-color', border);
+    this.style.setProperty('--grow', month.grow);
+    this.style.setProperty('--inner-grow', week.grow);
+    this.style.setProperty('--inner-basis', week.basis);
+    // this.style.setProperty('--event-min-height', event.minHeight);
+    // this.style.setProperty('--event-height', event.height);
+    // this.style.setProperty('--event-opacity', event.opacity);
+    if (this.currentStyle) this.listStack.classList.remove(this.currentStyle);
+    this.currentStyle = getViewStyle(value);
+    this.listStack.classList.add(this.currentStyle);
+    this.style.setProperty('--direction', this.isWeekMode ? 'row' : 'column');
+    this.pnlSelected.height = this.mode === 'full' ? 0 : 'auto';
   }
 
   private renderHeader() {
@@ -288,15 +304,15 @@ export class ScomCalendarView extends Module {
   private renderMonth(month: number, year: number, direction?: 1 | -1) {
     const gridMonth = this.monthsMap.get(this.monthKey);
     if (gridMonth) {
-      this.updateMonthUI(gridMonth);
       return;
     }
+
     const gridDates = <i-stack
-      direction={this.isWeekMode ? 'horizontal' : 'vertical'}
+      direction='vertical'
       width={'100%'}
       stack={{shrink: '0', grow: 'var(--grow, 0)'}}
       overflow={{x: 'auto', y: 'hidden'}}
-      class={`${swipeStyle} scroll-item`}
+      class={`${swipeStyle} month-row`}
       position='relative'
     ></i-stack>
     gridDates.setAttribute('data-month', this.monthKey);
@@ -306,13 +322,13 @@ export class ScomCalendarView extends Module {
         <i-grid-layout
           border={{top: {width: '1px', style: 'solid', color: 'var(--border-color)'}}}
           width={'100%'}
-          class="scroll-item"
           templateRows={['1fr']}
           templateColumns={[`repeat(${DAYS}, 1fr)`]}
           gap={{ column: '0.25rem' }}
           stack={{shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)'}}
           overflow={{x: 'auto', y: 'hidden'}}
           position='relative'
+          class="week-row"
         ></i-grid-layout>
       )
     }
@@ -392,15 +408,16 @@ export class ScomCalendarView extends Module {
         grid={{column: columnIndex + 1, columnSpan: 1, verticalAlignment: 'start'}}
         border={{radius: '0.25rem'}}
         background={{color: event.color || defaultEventColor}}
-        minHeight={'var(--event-min-height, 3px)'} maxHeight={'100%'}
-        height={'var(--event-height, auto)'}
+        // minHeight={'var(--event-min-height, 3px)'} maxHeight={'100%'}
+        // height={'var(--event-height, auto)'}
         padding={{left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem'}}
         overflow={'hidden'}
         cursor='pointer'
+        class="event"
       >
         <i-label
           caption={event.title}
-          opacity={'var(--event-opacity, 1)'}
+          // opacity={'var(--event-opacity, 1)'}
           lineHeight={'1rem'}
           font={{size: '0.75rem', color: Theme.colors.primary.contrastText, weight: 500}}
           textOverflow='ellipsis'
@@ -417,14 +434,15 @@ export class ScomCalendarView extends Module {
       grid={{column: columnIndex + 1, verticalAlignment: 'start'}}
       padding={{left: '0.125rem', right: '0.125rem', top: '0.125rem', bottom: '0.125rem'}}
       maxHeight={'100%'}
-      minHeight={'var(--event-min-height, 3px)'}
-      height={'var(--event-height, auto)'}
+      // minHeight={'var(--event-min-height, 3px)'}
+      // height={'var(--event-height, auto)'}
       overflow={'hidden'}
       cursor='pointer'
+      class="event"
     >
       <i-label
         caption={holiday.name}
-        opacity={'var(--event-opacity, 1)'}
+        // opacity={'var(--event-opacity, 1)'}
         lineHeight={'1rem'}
         wordBreak='break-word'
         lineClamp={2}
@@ -613,10 +631,13 @@ export class ScomCalendarView extends Module {
     this.initalDay = this.initialDate.getDay();
     this.updateNewDate(date);
     if (this.mode === 'full' && !this.isPicker) {
-      this.updateDatesHeight('345px');
-      this.style.setProperty('--border-color', Theme.background.main);
-      this.pnlSelected.height = 'auto';
-      this.pnlSelected.stack = {grow: '1', shrink: '1', basis: 'auto'};
+      const { event } = this.updateDatesHeight('345px');
+      this.updateStyle({
+        month: { grow: '0', direction: 'column' },
+        week: { grow: '1', basis: '100%' },
+        border: Theme.background.main,
+        event
+      });
     }
     const { month, year } = this.currentMonth || this.initialData;
     const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
@@ -649,15 +670,21 @@ export class ScomCalendarView extends Module {
     } else {
       this.listStack.classList.remove('--full');
     }
-    let opacity = height === '345px' || height === '125px' ? '0' : '1';
-    this.style.setProperty('--event-opacity', opacity);
-    this.style.setProperty('--event-height', opacity === '0' ? '3px' : 'auto');
-    this.style.setProperty('--event-min-height', opacity === '0' ? '0px' : '20px');
+
+    const opacity = height === '345px' || height === '125px' ? '0' : '1';
+    return {
+      height: height,
+      event: {
+        opacity,
+        height: opacity === '0' ? '3px' : 'auto',
+        minHeight: opacity === '0' ? '0px' : '20px'
+      }
+    }
   }
 
   private onMonthChangedFn(direction: 1 | -1) {
-    this.oldMonth = `${this.initialDate.getMonth() + 1}-${this.initialDate.getFullYear()}`;
-    this.initialDate.setMonth(this.initialDate.getMonth() + direction);
+    this.oldMonth = `${this.currentMonth.month}-${this.currentMonth.year}`;
+    this.initialDate.setMonth(this.currentMonth.month - 1 + direction);
     this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
     this.renderUI(direction);
     if (this.onMonthChanged) this.onMonthChanged({...this.currentMonth});
@@ -713,65 +740,58 @@ export class ScomCalendarView extends Module {
 
   onSwipeFullMonth(direction?: 1 | -1) {
     this.mode = 'full';
-    this.style.setProperty('--grow', '0');
-    this.style.setProperty('--inner-grow', '1');
-    this.style.setProperty('--inner-basis', '20%');
-    this.style.setProperty('--border-color', this.isPicker ? Theme.background.main : Theme.divider);
+    const { event } = this.updateDatesHeight('100%');
+    this.updateStyle({
+      month: { grow: '0', direction: 'column' },
+      week: { grow: '1', basis: '20%' },
+      border: this.isPicker ? Theme.background.main : Theme.divider,
+      event
+    });
+
     if (direction) {
       this.onMonthChangedFn(direction);
       this.onScroll(this.listStack, direction);
-    } else {
-      const { month, year } = this.initialData;
-      const monthEl = this.monthsMap.get(`${month}-${year}`);
-      if (monthEl) this.updateMonthUI(monthEl);
-      this.updateDatesHeight('100%');
-      this.pnlSelected.height = 0;
-      this.pnlSelected.stack = {grow: '0', shrink: '1', basis: '0%'};
     }
     return {...this.currentMonth};
   }
 
   onSwipeMonthEvents(direction?: 1 | -1) {
     this.mode = 'month';
-    this.style.setProperty('--grow', '0');
-    this.style.setProperty('--inner-grow', '1');
-    this.style.setProperty('--inner-basis', '100%');
-    this.style.setProperty('--border-color', Theme.background.main);
-    this.updateDatesHeight('345px');
-    this.pnlSelected.height = 'auto';
-    this.pnlSelected.stack = {grow: '1', shrink: '1', basis: 'auto'};
+    const { event } = this.updateDatesHeight('345px');
+    this.updateStyle({
+      month: { grow: '0', direction: 'column' },
+      week: { grow: '1', basis: '100%' },
+      border: Theme.background.main,
+      event
+    });
 
     if (direction) {
       this.onMonthChangedFn(direction);
       this.onScroll(this.listStack, direction);
+
+      const { date } = this.initialData;
+      const { month, year } = this.currentMonth;
+      this.updateOldDate();
+      this.updateNewDate({date, month, year});
+      const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+      this.eventSlider.activeSlide = index;
     }
-
-    const { date } = this.initialData;
-    const { month, year } = this.currentMonth || this.initialData;
-
-    const monthEl = this.monthsMap.get(`${month}-${year}`);
-    if (monthEl) this.updateMonthUI(monthEl);
-
-    this.updateOldDate();
-    this.updateNewDate({date, month, year});
-    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
-    this.eventSlider.activeSlide = index;
   }
 
   onSwipeWeek(direction?: 1 | -1) {
     this.mode = 'week';
-    this.style.setProperty('--grow', '1');
-    this.style.setProperty('--inner-grow', '0');
-    this.style.setProperty('--inner-basis', '100%');
-    this.style.setProperty('--border-color', Theme.background.main);
-    this.updateDatesHeight('125px');
-    this.pnlSelected.height = 'auto';
-    this.pnlSelected.stack = {grow: '1', shrink: '1', basis: 'auto'};
+    const { event } = this.updateDatesHeight('125px');
+    this.updateStyle({
+      month: { grow: '1', direction: 'row' },
+      week: { grow: '0', basis: '100%' },
+      border: Theme.background.main,
+      event
+    });
 
-    const { month, year } = this.currentMonth || this.initialData;
+    const { month, year } = this.currentMonth;
     let monthEl = this.monthsMap.get(`${month}-${year}`);
     if (!monthEl) return;
-    this.updateMonthUI(monthEl);
+
     if (!direction) {
       if (this.selectedDate) {
         const week = this.selectedDate.getAttribute('data-week') || 0;
@@ -796,7 +816,7 @@ export class ScomCalendarView extends Module {
       const { month: newMonth, year: newYear } = this.initialData;
       const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
       this.onScroll(this.listStack, direction);
-      this.updateMonthUI(newMonthEl);
+
       const factor = direction === 1 ? 0 : 4;
       newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
       this.activeDateWeek(newMonthEl, factor);
@@ -815,8 +835,8 @@ export class ScomCalendarView extends Module {
       const [date, month, year] = dateData.split('-');
       if (date) {
         this.initialDate = new Date(year, month - 1, Number(date));
-        const { month: currentMonth } = this.currentMonth || this.initialData;
-        const index = this.datesMap.get(`${currentMonth}-${year}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
+        const { month: currentMonth, year: currentYear } = this.currentMonth || this.initialData;
+        const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
         this.eventSlider.activeSlide = index;
         this.selectedDate = dateEl;
         dateEl.border = {radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important`};
@@ -824,15 +844,19 @@ export class ScomCalendarView extends Module {
     }
   }
 
-  private updateMonthUI(month: StackLayout) {
-    month.direction = this.isWeekMode ? 'horizontal' : 'vertical';
-  }
-
   private onScroll(parent: Control, direction: 1 | -1) {
+    if (!direction) return;
     const containerWidth = this.listStack.offsetWidth;
     const index = Math.round(parent.scrollLeft / containerWidth);
     const startScrollLeft = index * containerWidth;
-    const targetScrollLeft = startScrollLeft + (direction * containerWidth);
+
+    let targetScrollLeft = 0;
+    if (parent.id === 'listStack') {
+      const monthIndex = Array.from(this.listStack.children).findIndex(c => (c as Control).dataset.month === `${this.currentMonth.month}-${this.currentMonth.year}`);
+      targetScrollLeft = monthIndex * containerWidth;
+    } else {
+      targetScrollLeft = startScrollLeft + (direction * containerWidth)
+    }
     this.animateFn((progress: number) => {
       parent.scrollTo({
         left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
@@ -885,7 +909,7 @@ export class ScomCalendarView extends Module {
         </i-vstack>
         <i-panel
           id="pnlSelected"
-          stack={{ grow: '1', shrink: '1', basis: '0'}}
+          stack={{ grow: '0', shrink: '1', basis: 'auto'}}
           minHeight={0} height={0}
           overflow={'hidden'}
         >
