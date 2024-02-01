@@ -45,6 +45,7 @@ export default class ScomCalendar extends Module {
   private datePnlHeight: number = 0;
   private isVerticalSwiping: boolean = false;
   private isHorizontalSwiping: boolean = false;
+  private swippingType: string = '';
 
   private _events: IEvent[] = [];
 
@@ -156,6 +157,7 @@ export default class ScomCalendar extends Module {
     }
     this.isVerticalSwiping = false;
     this.isHorizontalSwiping = false;
+    this.swippingType = '';
   }
 
   private dragHandler(event: MouseEvent | TouchEvent) {
@@ -221,6 +223,8 @@ export default class ScomCalendar extends Module {
   }
 
   private onSwipeView(direction?: 1 | -1, mode: IViewMode = 'full') {
+    if (this.swippingType === mode) return;
+    this.swippingType = mode;
     if (mode === 'week') {
       this.calendarView.onSwipeWeek(direction);
     } else if (mode === 'month') {
