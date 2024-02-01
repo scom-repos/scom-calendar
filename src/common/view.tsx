@@ -631,17 +631,12 @@ export class ScomCalendarView extends Module {
     this.initalDay = this.initialDate.getDay();
     this.updateNewDate(date);
     if (this.mode === 'full' && !this.isPicker) {
-      const { event } = this.updateDatesHeight('345px');
-      this.updateStyle({
-        month: { grow: '0', direction: 'column' },
-        week: { grow: '1', basis: '100%' },
-        border: Theme.background.main,
-        event
-      });
+      this.onSwipeMonthEvents();
+    } else {
+      const { month, year } = this.currentMonth || this.initialData;
+      const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
+      this.eventSlider.activeSlide = index;
     }
-    const { month, year } = this.currentMonth || this.initialData;
-    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
-    this.eventSlider.activeSlide = index;
     if (this.onDateClicked) this.onDateClicked(this.initialDate.toISOString());
   }
 
@@ -768,14 +763,13 @@ export class ScomCalendarView extends Module {
     if (direction) {
       this.onMonthChangedFn(direction);
       this.onScroll(this.listStack, direction);
-
-      const { date } = this.initialData;
-      const { month, year } = this.currentMonth;
-      this.updateOldDate();
-      this.updateNewDate({date, month, year});
-      const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
-      this.eventSlider.activeSlide = index;
     }
+    const { date } = this.initialData;
+    const { month, year } = this.currentMonth;
+    this.updateOldDate();
+    this.updateNewDate({date, month, year});
+    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+    this.eventSlider.activeSlide = index;
   }
 
   onSwipeWeek(direction?: 1 | -1) {
