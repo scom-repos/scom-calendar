@@ -633,7 +633,7 @@ export class ScomCalendarView extends Module {
     if (this.mode === 'full' && !this.isPicker) {
       this.onSwipeMonthEvents();
     } else {
-      const { month, year } = this.currentMonth || this.initialData;
+      const { month, year } = this.currentMonth;
       const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
       this.eventSlider.activeSlide = index;
     }
@@ -686,7 +686,7 @@ export class ScomCalendarView extends Module {
   }
 
   private onSlideChanged(index: number) {
-    const { month, year } = this.currentMonth || this.initialData;
+    const { month, year } = this.currentMonth;
     const dates = this.datesMap.get(`${month}-${year}`);
     const newDate = dates[index];
     this.onSelectedDateChanged(newDate, index);
@@ -829,7 +829,7 @@ export class ScomCalendarView extends Module {
       const [date, month, year] = dateData.split('-');
       if (date) {
         this.initialDate = new Date(year, month - 1, Number(date));
-        const { month: currentMonth, year: currentYear } = this.currentMonth || this.initialData;
+        const { month: currentMonth, year: currentYear } = this.currentMonth;
         const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
         this.eventSlider.activeSlide = index;
         this.selectedDate = dateEl;
@@ -851,11 +851,79 @@ export class ScomCalendarView extends Module {
     } else {
       targetScrollLeft = startScrollLeft + (direction * containerWidth)
     }
-    this.animateFn((progress: number) => {
-      parent.scrollTo({
-        left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
-      })
-    })
+    this.smoothScroll(parent, targetScrollLeft, true);
+  }
+
+  private testSupportsSmoothScroll(): boolean {
+    let supports = false;
+
+    try {
+      let div = document.createElement('div');
+      div.scrollTo({
+        top: 0,
+        get behavior() {
+          supports = true;
+          return 'smooth' as any;
+        },
+      });
+    } catch (err) {}
+    return supports;
+  }
+
+  private smoothScroll(node: HTMLElement, topOrLeft: number, horizontal?: boolean): void {
+    const hasNativeSmoothScroll = this.testSupportsSmoothScroll()
+    if (hasNativeSmoothScroll) {
+      return (node as Element).scrollTo({
+        [horizontal ? 'left' : 'top']: topOrLeft,
+        behavior: 'smooth',
+      });
+    } else {
+      this.smoothScrollPolyfill(node, horizontal ? 'scrollLeft' : 'scrollTop', topOrLeft);
+    }
+  }
+
+  private smoothScrollPolyfill(node: HTMLElement, key: string, target: number): () => void {
+    const startTime = Date.now();
+    const offset = node[key] as number;
+    const gap = target - offset;
+    const duration = 1000;
+    let interrupt = false;
+
+    const easingOutQuint = (x: number, t: number, b: number, c: number, d: number): number =>
+      c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+
+    const step = () => {
+      const elapsed = Date.now() - startTime;
+      const percentage = elapsed / duration;
+
+      if (interrupt) {
+        return;
+      }
+
+      if (percentage > 1) {
+        cleanup();
+        return;
+      }
+
+      node[key] = easingOutQuint(0, elapsed, offset, gap, duration);
+      requestAnimationFrame(step);
+    };
+
+    const cancel = () => {
+      interrupt = true;
+      cleanup();
+    };
+
+    const cleanup = () => {
+      node.removeEventListener('wheel', cancel);
+      node.removeEventListener('touchstart', cancel);
+    };
+
+    node.addEventListener('wheel', cancel, { passive: true });
+    node.addEventListener('touchstart', cancel, { passive: true });
+
+    step();
+    return cancel;
   }
 
   init() {
@@ -905,7 +973,8 @@ export class ScomCalendarView extends Module {
           id="pnlSelected"
           stack={{ grow: '0', shrink: '1', basis: 'auto'}}
           minHeight={0} height={0}
-          overflow={'hidden'}
+          overflow={{x: 'hidden', y: 'auto'}}
+          maxHeight={'calc(100% - 345px)'}
         >
           <i-carousel-slider
             id="eventSlider"
