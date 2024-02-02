@@ -178,12 +178,12 @@ export default class ScomCalendar extends Module {
       deltaX = event.clientX - this.pos1.x;
     }
 
-    // const listStack = this.calendarView.querySelector('#listStack') as Control;
-    // const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
+    const listStack = this.calendarView.querySelector('#listStack') as Control;
+    const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
     // const containerHeight = this.calendarView.offsetHeight;
-    // const hThreshold = containerWidth * 0.1;
+    const hThreshold = containerWidth * 0.1;
     const verticalThreshold = this.datePnlHeight * 0.1;
-    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < this.hThreshold) {
+    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < hThreshold) {
       this.isVerticalSwiping = true;
       this.isHorizontalSwiping = false;
       const newHeight = this.datePnlHeight + this.pos2.y;
@@ -197,7 +197,7 @@ export default class ScomCalendar extends Module {
       }
       this.calendarView.mode = mode;
       return false;
-    } else if (Math.abs(deltaX) >= this.hThreshold) {
+    } else if (Math.abs(deltaX) >= hThreshold) {
       this.isVerticalSwiping = false;
       this.isHorizontalSwiping = true;
     } else {

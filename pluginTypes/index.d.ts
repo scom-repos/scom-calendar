@@ -185,6 +185,9 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         onSwipeWeek(direction?: 1 | -1): void;
         private activeDateWeek;
         private onScroll;
+        private testSupportsSmoothScroll;
+        private smoothScroll;
+        private smoothScrollPolyfill;
         init(): void;
         render(): void;
     }

@@ -703,7 +703,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.onSwipeMonthEvents();
             }
             else {
-                const { month, year } = this.currentMonth || this.initialData;
+                const { month, year } = this.currentMonth;
                 const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
                 this.eventSlider.activeSlide = index;
             }
@@ -753,7 +753,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.onMonthChanged({ ...this.currentMonth });
         }
         onSlideChanged(index) {
-            const { month, year } = this.currentMonth || this.initialData;
+            const { month, year } = this.currentMonth;
             const dates = this.datesMap.get(`${month}-${year}`);
             const newDate = dates[index];
             this.onSelectedDateChanged(newDate, index);
@@ -885,7 +885,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 const [date, month, year] = dateData.split('-');
                 if (date) {
                     this.initialDate = new Date(year, month - 1, Number(date));
-                    const { month: currentMonth, year: currentYear } = this.currentMonth || this.initialData;
+                    const { month: currentMonth, year: currentYear } = this.currentMonth;
                     const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
                     this.eventSlider.activeSlide = index;
                     this.selectedDate = dateEl;
@@ -907,11 +907,67 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             else {
                 targetScrollLeft = startScrollLeft + (direction * containerWidth);
             }
-            this.animateFn((progress) => {
-                parent.scrollTo({
-                    left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
+            this.smoothScroll(parent, targetScrollLeft, true);
+        }
+        testSupportsSmoothScroll() {
+            let supports = false;
+            try {
+                let div = document.createElement('div');
+                div.scrollTo({
+                    top: 0,
+                    get behavior() {
+                        supports = true;
+                        return 'smooth';
+                    },
                 });
-            });
+            }
+            catch (err) { }
+            return supports;
+        }
+        smoothScroll(node, topOrLeft, horizontal) {
+            const hasNativeSmoothScroll = this.testSupportsSmoothScroll();
+            if (hasNativeSmoothScroll) {
+                return node.scrollTo({
+                    [horizontal ? 'left' : 'top']: topOrLeft,
+                    behavior: 'smooth',
+                });
+            }
+            else {
+                this.smoothScrollPolyfill(node, horizontal ? 'scrollLeft' : 'scrollTop', topOrLeft);
+            }
+        }
+        smoothScrollPolyfill(node, key, target) {
+            const startTime = Date.now();
+            const offset = node[key];
+            const gap = target - offset;
+            const duration = 1000;
+            let interrupt = false;
+            const easingOutQuint = (x, t, b, c, d) => c * ((t = t / d - 1) * t * t * t * t + 1) + b;
+            const step = () => {
+                const elapsed = Date.now() - startTime;
+                const percentage = elapsed / duration;
+                if (interrupt) {
+                    return;
+                }
+                if (percentage > 1) {
+                    cleanup();
+                    return;
+                }
+                node[key] = easingOutQuint(0, elapsed, offset, gap, duration);
+                requestAnimationFrame(step);
+            };
+            const cancel = () => {
+                interrupt = true;
+                cleanup();
+            };
+            const cleanup = () => {
+                node.removeEventListener('wheel', cancel);
+                node.removeEventListener('touchstart', cancel);
+            };
+            node.addEventListener('wheel', cancel, { passive: true });
+            node.addEventListener('touchstart', cancel, { passive: true });
+            step();
+            return cancel;
         }
         init() {
             super.init();
@@ -1760,12 +1816,12 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 };
                 deltaX = event.clientX - this.pos1.x;
             }
-            // const listStack = this.calendarView.querySelector('#listStack') as Control;
-            // const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
+            const listStack = this.calendarView.querySelector('#listStack');
+            const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
             // const containerHeight = this.calendarView.offsetHeight;
-            // const hThreshold = containerWidth * 0.1;
+            const hThreshold = containerWidth * 0.1;
             const verticalThreshold = this.datePnlHeight * 0.1;
-            if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < this.hThreshold) {
+            if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < hThreshold) {
                 this.isVerticalSwiping = true;
                 this.isHorizontalSwiping = false;
                 const newHeight = this.datePnlHeight + this.pos2.y;
@@ -1782,7 +1838,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.calendarView.mode = mode;
                 return false;
             }
-            else if (Math.abs(deltaX) >= this.hThreshold) {
+            else if (Math.abs(deltaX) >= hThreshold) {
                 this.isVerticalSwiping = false;
                 this.isHorizontalSwiping = true;
             }
