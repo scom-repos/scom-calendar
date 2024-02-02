@@ -59,7 +59,6 @@ declare module "@scom/scom-calendar/common/select.css.ts" {
 declare module "@scom/scom-calendar/common/view.css.ts" {
     export const transitionStyle: string;
     export const swipeStyle: string;
-    export const monthListStyle: string;
     export const eventSliderStyle: string;
     export interface IViewStyle {
         event: any;
@@ -114,6 +113,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         }
     }
     export class ScomCalendarView extends Module {
+        private pnlWrapper;
         private gridHeader;
         private listStack;
         private selectedDate;
@@ -151,6 +151,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private get monthKey();
         private get datesInMonth();
         private get isWeekMode();
+        private getDatesHeightByMode;
         private getDates;
         private daysInMonth;
         private get calendarData();

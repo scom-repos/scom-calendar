@@ -15,7 +15,7 @@ import {
   StackLayout
 } from '@ijstech/components'
 import { IDate, IEvent, IHoliday, IViewMode } from '../interface'
-import { IViewStyle, eventSliderStyle, getViewStyle, monthListStyle, swipeStyle, transitionStyle } from './view.css';
+import { IViewStyle, eventSliderStyle, getViewStyle, swipeStyle, transitionStyle } from './view.css';
 import assets from '../assets';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -62,6 +62,7 @@ declare global {
 @customModule
 @customElements('i-scom-calendar--view')
 export class ScomCalendarView extends Module {
+  private pnlWrapper: VStack;
   private gridHeader: GridLayout;
   private listStack: HStack;
   private selectedDate: VStack;
@@ -170,6 +171,21 @@ export class ScomCalendarView extends Module {
     return this.mode === 'week';
   }
 
+  private getDatesHeightByMode(): string {
+    if (this.mode === 'full') return '100%';
+    if (this.mode === 'week') return '101px';
+    const viewHeight = this.offsetHeight || this.pnlWrapper.offsetHeight;
+    if (viewHeight < 408) {
+      return '255px';
+    } else if (viewHeight < 438) {
+      return '285px';
+    } else if (viewHeight < 468) {
+      return '315px';
+    } else {
+      return '345px';
+    }
+  }
+
   private getDates(month: number, year: number) {
     let dates: IDate[] = [];
     const firstDay = new Date(year, month - 1, 1).getDay();
@@ -259,7 +275,7 @@ export class ScomCalendarView extends Module {
     this.selectedMap = new Map();
     this.initalDay = this.initialDate.getDay();
     this.currentDate = new Date();
-    const { event } = this.updateDatesHeight('100%');
+    const { event } = this.updateDatesHeight();
     this.updateStyle({
       month: { grow: this.isWeekMode ? '1' : '0', direction: this.isWeekMode ? 'row' : 'column' },
       week: { grow: this.isWeekMode ? '0' : '1', basis: this.isWeekMode ? '100%' : '20%' },
@@ -658,15 +674,16 @@ export class ScomCalendarView extends Module {
     }
   }
 
-  private updateDatesHeight(height: string) {
+  private updateDatesHeight() {
+    const height = this.getDatesHeightByMode();
     this.pnlDates.height = height;
-    if (height === '100%') {
+    if (this.mode === 'full') {
       this.listStack.classList.add('--full');
     } else {
       this.listStack.classList.remove('--full');
     }
 
-    const opacity = height === '345px' || height === '125px' ? '0' : '1';
+    const opacity = this.mode !== 'full' ? '0' : '1';
     return {
       height: height,
       event: {
@@ -735,7 +752,7 @@ export class ScomCalendarView extends Module {
 
   onSwipeFullMonth(direction?: 1 | -1) {
     this.mode = 'full';
-    const { event } = this.updateDatesHeight('100%');
+    const { event } = this.updateDatesHeight();
     this.updateStyle({
       month: { grow: '0', direction: 'column' },
       week: { grow: '1', basis: '20%' },
@@ -752,7 +769,7 @@ export class ScomCalendarView extends Module {
 
   onSwipeMonthEvents(direction?: 1 | -1) {
     this.mode = 'month';
-    const { event } = this.updateDatesHeight('345px');
+    const { event } = this.updateDatesHeight();
     this.updateStyle({
       month: { grow: '0', direction: 'column' },
       week: { grow: '1', basis: '100%' },
@@ -774,7 +791,7 @@ export class ScomCalendarView extends Module {
 
   onSwipeWeek(direction?: 1 | -1) {
     this.mode = 'week';
-    const { event } = this.updateDatesHeight('125px');
+    const { event } = this.updateDatesHeight();
     this.updateStyle({
       month: { grow: '1', direction: 'row' },
       week: { grow: '0', basis: '100%' },
@@ -955,6 +972,7 @@ export class ScomCalendarView extends Module {
           maxHeight={'100%'}
           overflow={'hidden'}
           class={transitionStyle}
+          stack={{ shrink: '0' }}
         >
           <i-grid-layout
             id="gridHeader"
@@ -965,7 +983,7 @@ export class ScomCalendarView extends Module {
             id="listStack"
             overflow={{x: 'auto', y: 'hidden'}}
             minHeight={'1.875rem'}
-            class={`${swipeStyle} ${monthListStyle}`}
+            class={swipeStyle}
             stack={{grow: '1'}}
           ></i-hstack>
         </i-vstack>
