@@ -191,7 +191,6 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private smoothScroll;
         private smoothScrollPolyfill;
         init(): void;
-        swipeToScroll(posY: number): void;
         render(): void;
     }
 }

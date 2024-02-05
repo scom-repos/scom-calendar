@@ -965,13 +965,6 @@ export class ScomCalendarView extends Module {
     this.renderHeader();
     this.setData({ holidays, events, mode, date, isPicker });
   }
-  
-  swipeToScroll(posY: number) {
-    const controls = (this.eventSlider.items[this.eventSlider.activeSlide] as any)?.controls;
-    if (controls && controls.length) {
-      controls[0].scrollTop += posY;
-    }
-  }
 
   render(): void {
     return (

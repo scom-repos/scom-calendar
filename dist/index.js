@@ -1003,12 +1003,6 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.renderHeader();
             this.setData({ holidays, events, mode, date, isPicker });
         }
-        swipeToScroll(posY) {
-            const controls = this.eventSlider.items[this.eventSlider.activeSlide]?.controls;
-            if (controls && controls.length) {
-                controls[0].scrollTop += posY;
-            }
-        }
         render() {
             return (this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: "100%", overflow: 'hidden', gap: "1rem" },
                 this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', overflow: 'hidden', class: view_css_1.transitionStyle, stack: { shrink: '0' } },
