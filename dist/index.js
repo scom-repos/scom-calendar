@@ -1008,7 +1008,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', overflow: 'hidden', class: view_css_1.transitionStyle, stack: { shrink: '0' } },
                     this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                     this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: view_css_1.swipeStyle, stack: { grow: '1' } })),
-                this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0, overflow: { x: 'hidden', y: 'auto' } },
+                this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0 },
                     this.$render("i-carousel-slider", { id: "eventSlider", class: view_css_1.eventSliderStyle, swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))));
         }
     };

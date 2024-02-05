@@ -999,7 +999,6 @@ export class ScomCalendarView extends Module {
           id="pnlSelected"
           stack={{ grow: '1', shrink: '1', basis: 'auto'}}
           minHeight={0} height={0}
-          overflow={{x: 'hidden', y: 'auto'}}
         >
           <i-carousel-slider
             id="eventSlider"
