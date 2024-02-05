@@ -43,9 +43,9 @@ export default class ScomCalendar extends Module {
   private pos1: IPos = { x: 0, y: 0 };
   private pos2: IPos = { x: 0, y: 0 };
   private datePnlHeight: number = 0;
-  private hThreshold: number = 30;
   private isVerticalSwiping: boolean = false;
   private isHorizontalSwiping: boolean = false;
+  private calendarViewMode: IViewMode;
 
   private _events: IEvent[] = [];
 
@@ -103,7 +103,8 @@ export default class ScomCalendar extends Module {
     if (result !== undefined) {
       const target = event.target as HTMLElement;
       const sliderList = target.closest('#pnlDates');
-      if (sliderList) {
+      const elmEventList = target.closest('#pnlSelected');
+      if (sliderList || elmEventList) {
         this.dragStartHandler(event);
         return true;
       }
@@ -116,7 +117,8 @@ export default class ScomCalendar extends Module {
     if (result !== undefined) {
       const target = event.target as HTMLElement;
       const sliderList = target.closest('#pnlDates');
-      if (sliderList) {
+      const elmEventList = target.closest('#pnlSelected');
+      if (sliderList || elmEventList) {
         this.dragHandler(event);
         return true;
       }
@@ -133,6 +135,11 @@ export default class ScomCalendar extends Module {
         this.dragEndHandler(event);
         return true;
       }
+      const elmEventList = target.closest('#pnlSelected');
+      if (elmEventList) {
+        this.eventDragEndHandler(event);
+        return true;
+      }
     }
     return false;
   }
@@ -140,8 +147,8 @@ export default class ScomCalendar extends Module {
   private dragStartHandler(event: MouseEvent | TouchEvent) {
     if (event instanceof TouchEvent) {
       this.pos1 = {
-        x: event.touches[0].pageX,
-        y: event.touches[0].pageY
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY
       }
     } else {
       event.preventDefault();
@@ -157,68 +164,77 @@ export default class ScomCalendar extends Module {
     }
     this.isVerticalSwiping = false;
     this.isHorizontalSwiping = false;
+    this.calendarViewMode = this.calendarView.mode;
   }
 
   private dragHandler(event: MouseEvent | TouchEvent) {
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    let deltaX = 0;
     if (event instanceof TouchEvent) {
       this.pos2 = {
-        x: this.pos1.x - event.touches[0].pageX,
-        y: event.touches[0].pageY - this.pos1.y
+        x: this.pos1.x - event.touches[0].clientX,
+        y: this.pos1.y - event.touches[0].clientY
       }
-      deltaX = event.touches[0].pageX - this.pos1.x;
     } else {
       this.pos2 = {
         x: this.pos1.x - event.clientX,
-        y: event.pageY - this.pos1.y
+        y: this.pos1.y - event.pageY
       }
-      deltaX = event.clientX - this.pos1.x;
     }
-
-    const listStack = this.calendarView.querySelector('#listStack') as Control;
-    const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
-    const hThreshold = containerWidth * 0.1;
-    const verticalThreshold = this.datePnlHeight * 0.1;
-    if (Math.abs(this.pos2.y) >= verticalThreshold && Math.abs(deltaX) < hThreshold) {
-      this.isVerticalSwiping = true;
-      this.isHorizontalSwiping = false;
-      const newHeight = this.datePnlHeight + this.pos2.y;
-      let mode: IViewMode = 'full';
-      if (newHeight > 345 && this.pos2.y > verticalThreshold) {
-        mode = 'full';
-      } else if (newHeight < 345 && this.pos2.y < -verticalThreshold) {
-        mode = 'week';
-      } else {
-        mode = 'month';
+    if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y)) {
+      if (event.cancelable) {
+        event.preventDefault();
       }
-      this.calendarView.mode = mode;
-      return false;
-    } else if (Math.abs(deltaX) >= hThreshold) {
-      this.isVerticalSwiping = false;
-      this.isHorizontalSwiping = true;
     } else {
-      this.isVerticalSwiping = false;
-      this.isHorizontalSwiping = false;
+      if (this.calendarViewMode === 'week' && (this.pos2.y > 0 || this.calendarView.activeItemScrollTop > 0)) {
+      } else if (event.cancelable) {
+        event.preventDefault();
+      }
     }
   }
 
   private dragEndHandler(event: MouseEvent | TouchEvent) {
-    if (this.isVerticalSwiping) {
-      const mode = this.calendarView.mode;
-      this.onSwipeView(undefined, mode);
-      return false;
-    } else if (this.isHorizontalSwiping) {
-      let direction: 1 | -1 = 1;
-      if (this.pos2.x < -this.hThreshold) {
-        direction = -1;
-      } else if (this.pos2.x > this.hThreshold) {
-        direction = 1;
+    if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y)) {
+      const listStack = this.calendarView.querySelector('#listStack') as Control;
+      const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
+      const hThreshold = containerWidth * 0.1;
+      if (Math.abs(this.pos2.x) > hThreshold) {
+        this.isHorizontalSwiping = true;
+        let direction: 1 | -1 = this.pos2.x > 0 ? 1 : -1;
+        const mode = this.calendarViewMode;
+        this.onSwipeView(direction, mode);
       }
-      const mode = this.calendarView.mode;
-      this.onSwipeView(direction, mode);
+    } else {
+      const vThreshold = this.datePnlHeight * 0.1;
+      if (Math.abs(this.pos2.y) > vThreshold) {
+        this.isVerticalSwiping = true;
+        let mode;
+        if (this.pos2.y > 0) {
+          if (this.calendarViewMode === 'full') mode = 'month';
+          if (this.calendarViewMode === 'month') mode = 'week';
+        } else {
+          if (this.calendarViewMode === 'week') mode = 'month';
+          if (this.calendarViewMode === 'month') mode = 'full';
+        }
+        if (mode) this.onSwipeView(undefined, mode);
+        return false;
+      }
+    }
+  }
+
+  private eventDragEndHandler(event: MouseEvent | TouchEvent) {
+    const vThreshold = this.datePnlHeight * 0.1;
+    if (Math.abs(this.pos2.y) > vThreshold) {
+      this.isVerticalSwiping = true;
+      let mode;
+      if (this.pos2.y > 0) {
+        if (this.calendarViewMode === 'month') mode = 'week';
+      } else {
+        if (this.calendarViewMode === 'week' && this.calendarView.activeItemScrollTop === 0) {
+          mode = 'month';
+        }
+        if (this.calendarViewMode === 'month') mode = 'full';
+      }
+      if (mode) this.onSwipeView(undefined, mode);
+      return false;
     }
   }
 

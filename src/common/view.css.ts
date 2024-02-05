@@ -15,15 +15,6 @@ export const swipeStyle = Styles.style({
     }
   }
 })
-
-export const monthListStyle = Styles.style({
-  $nest: {
-    '&:not(.--full) > .month-row > .week-row': {
-      gridTemplateRows: 55
-    }
-  }
-})
-
 export const eventSliderStyle = Styles.style({
   $nest: {
     "> div": {
