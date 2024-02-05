@@ -132,6 +132,11 @@ export class ScomCalendarView extends Module {
     this._data.isPicker = value ?? false;
   }
 
+  get activeItemScrollTop () {
+    const controls = (this.eventSlider.items[this.eventSlider.activeSlide] as any)?.controls;
+    return controls?.[0]?.scrollTop || 0;
+  }
+
   private isCurrentDate(date: IDate) {
     if (!date) return false;
     return this.currentDate.getDate() === date.date &&
@@ -658,6 +663,9 @@ export class ScomCalendarView extends Module {
 
   private updateOldDate() {
     if (this.selectedDate) {
+      this.selectedDate.border.radius = '0.25rem';
+      this.selectedDate.border.width = '1px';
+      this.selectedDate.border.style = 'solid';
       this.selectedDate.border.color = Theme.background.main;
     }
   }
@@ -957,6 +965,13 @@ export class ScomCalendarView extends Module {
     this.renderHeader();
     this.setData({ holidays, events, mode, date, isPicker });
   }
+  
+  swipeToScroll(posY: number) {
+    const controls = (this.eventSlider.items[this.eventSlider.activeSlide] as any)?.controls;
+    if (controls && controls.length) {
+      controls[0].scrollTop += posY;
+    }
+  }
 
   render(): void {
     return (
@@ -989,10 +1004,9 @@ export class ScomCalendarView extends Module {
         </i-vstack>
         <i-panel
           id="pnlSelected"
-          stack={{ grow: '0', shrink: '1', basis: 'auto'}}
+          stack={{ grow: '1', shrink: '1', basis: 'auto'}}
           minHeight={0} height={0}
           overflow={{x: 'hidden', y: 'auto'}}
-          maxHeight={'calc(100% - 345px)'}
         >
           <i-carousel-slider
             id="eventSlider"

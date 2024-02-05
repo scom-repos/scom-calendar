@@ -146,6 +146,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         set date(value: string);
         get isPicker(): boolean;
         set isPicker(value: boolean);
+        get activeItemScrollTop(): any;
         private isCurrentDate;
         private get initialData();
         private get monthKey();
@@ -190,6 +191,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private smoothScroll;
         private smoothScrollPolyfill;
         init(): void;
+        swipeToScroll(posY: number): void;
         render(): void;
     }
 }
@@ -411,9 +413,9 @@ declare module "@scom/scom-calendar" {
         private pos1;
         private pos2;
         private datePnlHeight;
-        private hThreshold;
         private isVerticalSwiping;
         private isHorizontalSwiping;
+        private calendarViewMode;
         private _events;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
@@ -432,6 +434,7 @@ declare module "@scom/scom-calendar" {
         private dragStartHandler;
         private dragHandler;
         private dragEndHandler;
+        private eventDragEndHandler;
         private onSwipeView;
         private onUpdateMonth;
         private onChangeDate;
