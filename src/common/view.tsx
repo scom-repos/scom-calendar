@@ -559,6 +559,17 @@ export class ScomCalendarView extends Module {
   }
 
   private renderSelectedEvent(event: IEvent, parent: Control, isLast: boolean) {
+    const startDate = moment(event.startDate);
+    const endDate = moment(event.endDate);
+    let txtTime = "";
+    if (startDate && endDate) {
+      const isSameDay = startDate.isSame(endDate, 'day');
+      const isSameYear = startDate.isSame(endDate, 'year');
+      const endDateFormat = isSameDay ? 'HH:mm' : isSameYear ? 'MMM DD, HH:mm' : 'MMM DD YYYY, HH:mm';
+      txtTime = `${startDate.format('HH:mm')} - ${endDate.format(endDateFormat)}`;
+    } else if (startDate) {
+      txtTime = `${startDate.format('HH:mm')}`;
+    }
     const startTime = moment(event.startDate).format('HH:mm');
     const endTime = moment(event.endDate).format('HH:mm');
     let iconAttr = {};
@@ -591,7 +602,7 @@ export class ScomCalendarView extends Module {
             ></i-panel>
             <i-vstack gap="0.25rem">
               <i-label caption={event.title} font={{size: '1rem', weight: 500}}></i-label>
-              <i-label caption={`${startTime} - ${endTime}`} font={{size: '0.75rem', weight: 500}} opacity={0.36}></i-label>
+              <i-label caption={txtTime} font={{size: '0.75rem', weight: 500}} opacity={0.36}></i-label>
             </i-vstack>
           </i-hstack>
           <i-icon
@@ -999,7 +1010,6 @@ export class ScomCalendarView extends Module {
           id="pnlSelected"
           stack={{ grow: '1', shrink: '1', basis: 'auto'}}
           minHeight={0} height={0}
-          overflow={{x: 'hidden', y: 'auto'}}
         >
           <i-carousel-slider
             id="eventSlider"

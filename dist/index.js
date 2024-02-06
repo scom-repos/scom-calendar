@@ -673,6 +673,18 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.onEventClicked(data, event);
         }
         renderSelectedEvent(event, parent, isLast) {
+            const startDate = (0, components_4.moment)(event.startDate);
+            const endDate = (0, components_4.moment)(event.endDate);
+            let txtTime = "";
+            if (startDate && endDate) {
+                const isSameDay = startDate.isSame(endDate, 'day');
+                const isSameYear = startDate.isSame(endDate, 'year');
+                const endDateFormat = isSameDay ? 'HH:mm' : isSameYear ? 'MMM DD, HH:mm' : 'MMM DD YYYY, HH:mm';
+                txtTime = `${startDate.format('HH:mm')} - ${endDate.format(endDateFormat)}`;
+            }
+            else if (startDate) {
+                txtTime = `${startDate.format('HH:mm')}`;
+            }
             const startTime = (0, components_4.moment)(event.startDate).format('HH:mm');
             const endTime = (0, components_4.moment)(event.endDate).format('HH:mm');
             let iconAttr = {};
@@ -690,7 +702,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                         this.$render("i-panel", { stack: { shrink: '0', basis: '3px' }, height: '1.25rem', width: 3, border: { radius: '0.25rem' }, margin: { right: '0.625rem' }, background: { color: event.color || defaultEventColor } }),
                         this.$render("i-vstack", { gap: "0.25rem" },
                             this.$render("i-label", { caption: event.title, font: { size: '1rem', weight: 500 } }),
-                            this.$render("i-label", { caption: `${startTime} - ${endTime}`, font: { size: '0.75rem', weight: 500 }, opacity: 0.36 }))),
+                            this.$render("i-label", { caption: txtTime, font: { size: '0.75rem', weight: 500 }, opacity: 0.36 }))),
                     this.$render("i-icon", { cursor: 'pointer', stack: { shrink: '0' }, onClick: () => window.open(event.link, '_blank'), visible: !!event.link, ...iconAttr }))));
         }
         renderSelectedHoliday(holiday, parent) {
@@ -1008,7 +1020,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', overflow: 'hidden', class: view_css_1.transitionStyle, stack: { shrink: '0' } },
                     this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                     this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: view_css_1.swipeStyle, stack: { grow: '1' } })),
-                this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0, overflow: { x: 'hidden', y: 'auto' } },
+                this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0 },
                     this.$render("i-carousel-slider", { id: "eventSlider", class: view_css_1.eventSliderStyle, swipe: true, width: '100%', height: '100%', indicators: false, autoplay: false, border: { top: { width: '1px', style: 'solid', color: Theme.divider } }, onSlideChange: this.onSlideChanged }))));
         }
     };
