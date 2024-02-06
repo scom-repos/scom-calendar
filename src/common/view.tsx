@@ -49,6 +49,7 @@ interface IViewData {
   mode: IViewMode;
   date?: string;
   isPicker?: boolean;
+  isMonthEventShown?: boolean;
 }
 
 declare global {
@@ -135,6 +136,13 @@ export class ScomCalendarView extends Module {
   get activeItemScrollTop () {
     const controls = (this.eventSlider.items[this.eventSlider.activeSlide] as any)?.controls;
     return controls?.[0]?.scrollTop || 0;
+  }
+
+  get isMonthEventShown() {
+    return this._data.isMonthEventShown ?? false;
+  }
+  set isMonthEventShown(value: boolean) {
+    this._data.isMonthEventShown = value ?? false;
   }
 
   private isCurrentDate(date: IDate) {
@@ -652,12 +660,15 @@ export class ScomCalendarView extends Module {
     this.initalDay = this.initialDate.getDay();
     this.updateNewDate(date);
     if (this.mode === 'full' && !this.isPicker) {
-      this.onSwipeMonthEvents();
-    } else {
-      const { month, year } = this.currentMonth;
-      const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
-      this.eventSlider.activeSlide = index;
+      if (this.isMonthEventShown)
+        this.onSwipeMonthEvents();
+      else
+        this.onSwipeWeek();
     }
+    const { month, year } = this.currentMonth;
+    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
+    this.eventSlider.activeSlide = index;
+
     if (this.onDateClicked) this.onDateClicked(this.initialDate.toISOString());
   }
 
@@ -730,7 +741,7 @@ export class ScomCalendarView extends Module {
       } else if (oldDay === 0 && (this.initalDay === 6 || this.initalDay === 0)) {
         this.onSwipeWeek(-1);
       }
-    } else {
+    } else if (this.mode === 'month') {
       if (this.initalDay === 6 && index === 34) {
         this.onSwipeMonthEvents(1);
       } else if (this.initalDay === 0 && index === 0) {
@@ -789,12 +800,12 @@ export class ScomCalendarView extends Module {
       this.onMonthChangedFn(direction);
       this.onScroll(this.listStack, direction);
     }
-    const { date } = this.initialData;
-    const { month, year } = this.currentMonth;
-    this.updateOldDate();
-    this.updateNewDate({date, month, year});
-    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
-    this.eventSlider.activeSlide = index;
+    // const { date } = this.initialData;
+    // const { month, year } = this.currentMonth;
+    // this.updateOldDate();
+    // this.updateNewDate({date, month, year});
+    // const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+    // this.eventSlider.activeSlide = index;
   }
 
   onSwipeWeek(direction?: 1 | -1) {
@@ -962,8 +973,9 @@ export class ScomCalendarView extends Module {
     const mode = this.getAttribute('mode', true, 'full');
     const date = this.getAttribute('date', true);
     const isPicker = this.getAttribute('isPicker', true, false);
+    const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
     this.renderHeader();
-    this.setData({ holidays, events, mode, date, isPicker });
+    this.setData({ holidays, events, mode, date, isPicker, isMonthEventShown });
   }
 
   render(): void {
@@ -979,7 +991,7 @@ export class ScomCalendarView extends Module {
           width={'100%'}
           maxHeight={'100%'}
           overflow={'hidden'}
-          class={transitionStyle}
+          // class={transitionStyle}
           stack={{ shrink: '0' }}
         >
           <i-grid-layout

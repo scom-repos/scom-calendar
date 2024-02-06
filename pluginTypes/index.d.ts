@@ -104,6 +104,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         mode: IViewMode;
         date?: string;
         isPicker?: boolean;
+        isMonthEventShown?: boolean;
     }
     global {
         namespace JSX {
@@ -147,6 +148,8 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         get isPicker(): boolean;
         set isPicker(value: boolean);
         get activeItemScrollTop(): any;
+        get isMonthEventShown(): boolean;
+        set isMonthEventShown(value: boolean);
         private isCurrentDate;
         private get initialData();
         private get monthKey();
@@ -393,6 +396,7 @@ declare module "@scom/scom-calendar" {
     type selectCallbackType = (date: string) => void;
     interface ScomCalendarElement extends ControlElement {
         events?: IEvent[];
+        isMonthEventShown?: boolean;
         onEventClicked?: callbackType;
         onDateClicked?: selectCallbackType;
     }
@@ -416,14 +420,18 @@ declare module "@scom/scom-calendar" {
         private isHorizontalSwiping;
         private calendarViewMode;
         private _events;
+        private _isMonthEventShown;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarElement, parent?: Container): Promise<ScomCalendar>;
         get events(): IEvent[];
         set events(value: IEvent[]);
-        setData({ events }: {
+        get isMonthEventShown(): boolean;
+        set isMonthEventShown(value: boolean);
+        setData({ events, isMonthEventShown }: {
             events: IEvent[];
+            isMonthEventShown: boolean;
         }): void;
         private onSelectedDate;
         private updateHeader;
