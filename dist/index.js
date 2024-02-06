@@ -1920,6 +1920,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             }
         }
         eventDragEndHandler(event) {
+            if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y))
+                return;
             const vThreshold = this.datePnlHeight * 0.1;
             if (Math.abs(this.pos2.y) > vThreshold) {
                 this.isVerticalSwiping = true;

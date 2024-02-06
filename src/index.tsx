@@ -236,6 +236,7 @@ export default class ScomCalendar extends Module {
   }
 
   private eventDragEndHandler(event: MouseEvent | TouchEvent) {
+    if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y)) return;
     const vThreshold = this.datePnlHeight * 0.1;
     if (Math.abs(this.pos2.y) > vThreshold) {
       this.isVerticalSwiping = true;
