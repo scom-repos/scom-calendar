@@ -19,6 +19,7 @@ type selectCallbackType = (date: string) => void;
 
 interface ScomCalendarElement extends ControlElement {
   events?: IEvent[];
+  isMonthEventShown?: boolean;
   onEventClicked?: callbackType;
   onDateClicked?: selectCallbackType;
 }
@@ -48,6 +49,7 @@ export default class ScomCalendar extends Module {
   private calendarViewMode: IViewMode;
 
   private _events: IEvent[] = [];
+  private _isMonthEventShown: boolean = false;
 
   onEventClicked: callbackType;
   onDateClicked: selectCallbackType;
@@ -70,8 +72,16 @@ export default class ScomCalendar extends Module {
     this._events = value ?? []
   }
 
-  setData({ events }: { events: IEvent[] }) {
+  get isMonthEventShown() {
+    return this._isMonthEventShown ?? false;
+  }
+  set isMonthEventShown(value: boolean) {
+    this._isMonthEventShown = value ?? false;
+  }
+
+  setData({ events, isMonthEventShown }: { events: IEvent[], isMonthEventShown: boolean }) {
     this.events = events;
+    this.isMonthEventShown = isMonthEventShown;
     this.calendarView.onSwiping = () => this.isVerticalSwiping || this.isHorizontalSwiping;
     if (this.onEventClicked)
       this.calendarView.onEventClicked = this.onEventClicked.bind(this);
@@ -79,7 +89,8 @@ export default class ScomCalendar extends Module {
     this.calendarView.setData({
       mode: 'full',
       events: this.events,
-      holidays: holidayList
+      holidays: holidayList,
+      isMonthEventShown: this.isMonthEventShown
     });
     this.updateHeader();
     this.maxHeight = window.innerHeight;
@@ -208,10 +219,14 @@ export default class ScomCalendar extends Module {
         this.isVerticalSwiping = true;
         let mode;
         if (this.pos2.y > 0) {
-          if (this.calendarViewMode === 'full') mode = 'month';
+          if (this.calendarViewMode === 'full') {
+            mode = this.isMonthEventShown ? 'month' : 'week';
+          };
           if (this.calendarViewMode === 'month') mode = 'week';
         } else {
-          if (this.calendarViewMode === 'week') mode = 'month';
+          if (this.calendarViewMode === 'week') {
+            mode = this.isMonthEventShown ? 'month' : 'full';
+          }
           if (this.calendarViewMode === 'month') mode = 'full';
         }
         if (mode) this.onSwipeView(undefined, mode);
@@ -226,12 +241,12 @@ export default class ScomCalendar extends Module {
       this.isVerticalSwiping = true;
       let mode;
       if (this.pos2.y > 0) {
-        if (this.calendarViewMode === 'month') mode = 'week';
+        if (this.calendarViewMode === 'month' || (this.calendarViewMode === 'full' && !this.isMonthEventShown)) mode = 'week';
       } else {
         if (this.calendarViewMode === 'week' && this.calendarView.activeItemScrollTop === 0) {
-          mode = 'month';
+          mode = this.isMonthEventShown ? 'month' : 'full';
         }
-        if (this.calendarViewMode === 'month') mode = 'full';
+        if (this.calendarViewMode === 'month' || (this.calendarViewMode === 'week' && !this.isMonthEventShown)) mode = 'full';
       }
       if (mode) this.onSwipeView(undefined, mode);
       return false;
@@ -300,7 +315,8 @@ export default class ScomCalendar extends Module {
     super.init()
     this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
     const events = this.getAttribute('events', true);
-    this.setData({ events });
+    const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
+    this.setData({ events, isMonthEventShown });
   }
 
   render(): void {

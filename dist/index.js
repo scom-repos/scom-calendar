@@ -374,6 +374,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const controls = this.eventSlider.items[this.eventSlider.activeSlide]?.controls;
             return controls?.[0]?.scrollTop || 0;
         }
+        get isMonthEventShown() {
+            return this._data.isMonthEventShown ?? false;
+        }
+        set isMonthEventShown(value) {
+            this._data.isMonthEventShown = value ?? false;
+        }
         isCurrentDate(date) {
             if (!date)
                 return false;
@@ -728,13 +734,14 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.initalDay = this.initialDate.getDay();
             this.updateNewDate(date);
             if (this.mode === 'full' && !this.isPicker) {
-                this.onSwipeMonthEvents();
+                if (this.isMonthEventShown)
+                    this.onSwipeMonthEvents();
+                else
+                    this.onSwipeWeek();
             }
-            else {
-                const { month, year } = this.currentMonth;
-                const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
-                this.eventSlider.activeSlide = index;
-            }
+            const { month, year } = this.currentMonth;
+            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
+            this.eventSlider.activeSlide = index;
             if (this.onDateClicked)
                 this.onDateClicked(this.initialDate.toISOString());
         }
@@ -805,7 +812,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                     this.onSwipeWeek(-1);
                 }
             }
-            else {
+            else if (this.mode === 'month') {
                 if (this.initalDay === 6 && index === 34) {
                     this.onSwipeMonthEvents(1);
                 }
@@ -856,12 +863,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.onMonthChangedFn(direction);
                 this.onScroll(this.listStack, direction);
             }
-            const { date } = this.initialData;
-            const { month, year } = this.currentMonth;
-            this.updateOldDate();
-            this.updateNewDate({ date, month, year });
-            const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
-            this.eventSlider.activeSlide = index;
+            // const { date } = this.initialData;
+            // const { month, year } = this.currentMonth;
+            // this.updateOldDate();
+            // this.updateNewDate({date, month, year});
+            // const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
+            // this.eventSlider.activeSlide = index;
         }
         onSwipeWeek(direction) {
             this.mode = 'week';
@@ -1012,12 +1019,15 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const mode = this.getAttribute('mode', true, 'full');
             const date = this.getAttribute('date', true);
             const isPicker = this.getAttribute('isPicker', true, false);
+            const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
             this.renderHeader();
-            this.setData({ holidays, events, mode, date, isPicker });
+            this.setData({ holidays, events, mode, date, isPicker, isMonthEventShown });
         }
         render() {
             return (this.$render("i-vstack", { id: "pnlWrapper", width: '100%', height: "100%", overflow: 'hidden', gap: "1rem" },
-                this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', overflow: 'hidden', class: view_css_1.transitionStyle, stack: { shrink: '0' } },
+                this.$render("i-vstack", { id: "pnlDates", width: '100%', maxHeight: '100%', overflow: 'hidden', 
+                    // class={transitionStyle}
+                    stack: { shrink: '0' } },
                     this.$render("i-grid-layout", { id: "gridHeader", columnsPerRow: DAYS, margin: { top: '0.75rem' } }),
                     this.$render("i-hstack", { id: "listStack", overflow: { x: 'auto', y: 'hidden' }, minHeight: '1.875rem', class: view_css_1.swipeStyle, stack: { grow: '1' } })),
                 this.$render("i-panel", { id: "pnlSelected", stack: { grow: '1', shrink: '1', basis: 'auto' }, minHeight: 0, height: 0 },
@@ -1731,6 +1741,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
             this._events = [];
+            this._isMonthEventShown = false;
             this.onUpdateMonth = this.onUpdateMonth.bind(this);
         }
         static async create(options, parent) {
@@ -1744,8 +1755,15 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         set events(value) {
             this._events = value ?? [];
         }
-        setData({ events }) {
+        get isMonthEventShown() {
+            return this._isMonthEventShown ?? false;
+        }
+        set isMonthEventShown(value) {
+            this._isMonthEventShown = value ?? false;
+        }
+        setData({ events, isMonthEventShown }) {
             this.events = events;
+            this.isMonthEventShown = isMonthEventShown;
             this.calendarView.onSwiping = () => this.isVerticalSwiping || this.isHorizontalSwiping;
             if (this.onEventClicked)
                 this.calendarView.onEventClicked = this.onEventClicked.bind(this);
@@ -1753,7 +1771,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.calendarView.setData({
                 mode: 'full',
                 events: this.events,
-                holidays: holidays_json_1.default
+                holidays: holidays_json_1.default,
+                isMonthEventShown: this.isMonthEventShown
             });
             this.updateHeader();
             this.maxHeight = window.innerHeight;
@@ -1880,14 +1899,17 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                     this.isVerticalSwiping = true;
                     let mode;
                     if (this.pos2.y > 0) {
-                        if (this.calendarViewMode === 'full')
-                            mode = 'month';
+                        if (this.calendarViewMode === 'full') {
+                            mode = this.isMonthEventShown ? 'month' : 'week';
+                        }
+                        ;
                         if (this.calendarViewMode === 'month')
                             mode = 'week';
                     }
                     else {
-                        if (this.calendarViewMode === 'week')
-                            mode = 'month';
+                        if (this.calendarViewMode === 'week') {
+                            mode = this.isMonthEventShown ? 'month' : 'full';
+                        }
                         if (this.calendarViewMode === 'month')
                             mode = 'full';
                     }
@@ -1903,14 +1925,14 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.isVerticalSwiping = true;
                 let mode;
                 if (this.pos2.y > 0) {
-                    if (this.calendarViewMode === 'month')
+                    if (this.calendarViewMode === 'month' || (this.calendarViewMode === 'full' && !this.isMonthEventShown))
                         mode = 'week';
                 }
                 else {
                     if (this.calendarViewMode === 'week' && this.calendarView.activeItemScrollTop === 0) {
-                        mode = 'month';
+                        mode = this.isMonthEventShown ? 'month' : 'full';
                     }
-                    if (this.calendarViewMode === 'month')
+                    if (this.calendarViewMode === 'month' || (this.calendarViewMode === 'week' && !this.isMonthEventShown))
                         mode = 'full';
                 }
                 if (mode)
@@ -1979,7 +2001,8 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             super.init();
             this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
             const events = this.getAttribute('events', true);
-            this.setData({ events });
+            const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
+            this.setData({ events, isMonthEventShown });
         }
         render() {
             return (this.$render("i-vstack", { background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
