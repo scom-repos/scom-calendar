@@ -431,7 +431,7 @@ declare module "@scom/scom-calendar" {
         set isMonthEventShown(value: boolean);
         setData({ events, isMonthEventShown }: {
             events: IEvent[];
-            isMonthEventShown: boolean;
+            isMonthEventShown?: boolean;
         }): void;
         private onSelectedDate;
         private updateHeader;
