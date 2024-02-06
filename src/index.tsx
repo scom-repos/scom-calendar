@@ -79,7 +79,7 @@ export default class ScomCalendar extends Module {
     this._isMonthEventShown = value ?? false;
   }
 
-  setData({ events, isMonthEventShown }: { events: IEvent[], isMonthEventShown: boolean }) {
+  setData({ events, isMonthEventShown }: { events: IEvent[], isMonthEventShown?: boolean }) {
     this.events = events;
     this.isMonthEventShown = isMonthEventShown;
     this.calendarView.onSwiping = () => this.isVerticalSwiping || this.isHorizontalSwiping;
