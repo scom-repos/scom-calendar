@@ -1740,6 +1740,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.datePnlHeight = 0;
             this.isVerticalSwiping = false;
             this.isHorizontalSwiping = false;
+            this.threshold = 35;
             this._events = [];
             this._isMonthEventShown = false;
             this.onUpdateMonth = this.onUpdateMonth.bind(this);
@@ -1883,10 +1884,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         }
         dragEndHandler(event) {
             if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y)) {
-                const listStack = this.calendarView.querySelector('#listStack');
-                const containerWidth = listStack ? listStack.offsetWidth : this.calendarView.offsetWidth;
-                const hThreshold = containerWidth * 0.1;
-                if (Math.abs(this.pos2.x) > hThreshold) {
+                if (Math.abs(this.pos2.x) > this.threshold) {
                     this.isHorizontalSwiping = true;
                     let direction = this.pos2.x > 0 ? 1 : -1;
                     const mode = this.calendarViewMode;
@@ -1894,8 +1892,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 }
             }
             else {
-                const vThreshold = this.datePnlHeight * 0.1;
-                if (Math.abs(this.pos2.y) > vThreshold) {
+                if (Math.abs(this.pos2.y) > this.threshold) {
                     this.isVerticalSwiping = true;
                     let mode;
                     if (this.pos2.y > 0) {
@@ -1922,8 +1919,7 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
         eventDragEndHandler(event) {
             if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y))
                 return;
-            const vThreshold = this.datePnlHeight * 0.1;
-            if (Math.abs(this.pos2.y) > vThreshold) {
+            if (Math.abs(this.pos2.y) > this.threshold) {
                 this.isVerticalSwiping = true;
                 let mode;
                 if (this.pos2.y > 0) {

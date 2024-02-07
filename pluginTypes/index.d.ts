@@ -419,6 +419,7 @@ declare module "@scom/scom-calendar" {
         private isVerticalSwiping;
         private isHorizontalSwiping;
         private calendarViewMode;
+        private threshold;
         private _events;
         private _isMonthEventShown;
         onEventClicked: callbackType;
