@@ -117,7 +117,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private pnlWrapper;
         private gridHeader;
         private listStack;
-        private selectedDate;
+        private pnlSelectedDate;
         private pnlDates;
         private pnlSelected;
         private eventSlider;
@@ -130,6 +130,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private initalDay;
         private currentMonth;
         private currentStyle;
+        private selectedDate;
         private _data;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;

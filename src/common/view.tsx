@@ -66,7 +66,7 @@ export class ScomCalendarView extends Module {
   private pnlWrapper: VStack;
   private gridHeader: GridLayout;
   private listStack: HStack;
-  private selectedDate: VStack;
+  private pnlSelectedDate: VStack;
   private pnlDates: Panel;
   private pnlSelected: Panel;
   private eventSlider: CarouselSlider;
@@ -80,6 +80,7 @@ export class ScomCalendarView extends Module {
   private initalDay: number = 0;
   private currentMonth: { month: number, year: number };
   private currentStyle: string = '';
+  private selectedDate: Date;
 
   private _data: IViewData;
 
@@ -333,8 +334,11 @@ export class ScomCalendarView extends Module {
   private renderMonth(month: number, year: number, direction?: 1 | -1) {
     const gridMonth = this.monthsMap.get(this.monthKey);
     if (gridMonth) {
+      this.updateOldDate();
+      this.updateNewDate({ date: this.initialDate.getDate(), month: month, year: year });
       return;
     }
+    this.selectedDate = new Date(this.initialDate);
 
     const gridDates = <i-stack
       direction='vertical'
@@ -411,7 +415,7 @@ export class ScomCalendarView extends Module {
       gridDates.children[rowIndex].append(el);
       if (isSelectedDate) {
         this.updateOldDate();
-        this.selectedDate = el;
+        this.pnlSelectedDate = el;
       }
     }
 
@@ -684,22 +688,24 @@ export class ScomCalendarView extends Module {
   }
 
   private updateOldDate() {
-    if (this.selectedDate) {
-      this.selectedDate.border.radius = '0.25rem';
-      this.selectedDate.border.width = '1px';
-      this.selectedDate.border.style = 'solid';
-      this.selectedDate.border.color = Theme.background.main;
+    if (this.pnlSelectedDate) {
+      this.pnlSelectedDate.border.radius = '0.25rem';
+      this.pnlSelectedDate.border.width = '1px';
+      this.pnlSelectedDate.border.style = 'solid';
+      this.pnlSelectedDate.border.color = Theme.background.main;
+      this.selectedDate = null;
     }
   }
 
   private updateNewDate(data: IDate) {
     const { date, month, year } = data;
     const { month: mMonth, year: mYear } = this.currentMonth;
+    this.selectedDate = new Date(year, month, date);
     const dataDate = `${date}-${month}-${year}`;
     const monthTarget = this.listStack.querySelector(`[data-month="${mMonth}-${mYear}"]`) as Control;
     const target = monthTarget?.querySelector(`[data-date="${dataDate}"]`) as VStack;
     if (target) {
-      this.selectedDate = target;
+      this.pnlSelectedDate = target;
       target.border = {radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important`};
     }
   }
@@ -834,8 +840,8 @@ export class ScomCalendarView extends Module {
     if (!monthEl) return;
 
     if (!direction) {
-      if (this.selectedDate) {
-        const week = this.selectedDate.getAttribute('data-week') || 0;
+      if (this.pnlSelectedDate) {
+        const week = this.pnlSelectedDate.getAttribute('data-week') || 0;
         if (week) {
           const startScrollLeft = monthEl.scrollLeft;
           const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
@@ -875,11 +881,12 @@ export class ScomCalendarView extends Module {
       const dateData = dateEl.getAttribute('data-date');
       const [date, month, year] = dateData.split('-');
       if (date) {
+        this.selectedDate = new Date(year, month, date);
         this.initialDate = new Date(year, month - 1, Number(date));
         const { month: currentMonth, year: currentYear } = this.currentMonth;
         const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
         this.eventSlider.activeSlide = index;
-        this.selectedDate = dateEl;
+        this.pnlSelectedDate = dateEl;
         dateEl.border = {radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important`};
       }
     }
