@@ -563,6 +563,8 @@ export class ScomCalendarView extends Module {
   }
 
   private handleEventClick(data: IEvent, event?: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
     if (this.onEventClicked) this.onEventClicked(data, event);
   }
 
