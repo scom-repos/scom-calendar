@@ -429,6 +429,7 @@ declare module "@scom/scom-calendar" {
         set events(value: IEvent[]);
         get isMonthEventShown(): boolean;
         set isMonthEventShown(value: boolean);
+        get isTouchDevice(): boolean;
         setData({ events, isMonthEventShown }: {
             events: IEvent[];
             isMonthEventShown?: boolean;
@@ -442,6 +443,7 @@ declare module "@scom/scom-calendar" {
         private dragHandler;
         private dragEndHandler;
         private eventDragEndHandler;
+        private getDeviceType;
         private onSwipeView;
         private onUpdateMonth;
         private onChangeDate;

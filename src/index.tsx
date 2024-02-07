@@ -79,6 +79,10 @@ export default class ScomCalendar extends Module {
     this._isMonthEventShown = value ?? false;
   }
 
+  get isTouchDevice() {
+    return this.getDeviceType() !== 'desktop';
+  }
+
   setData({ events, isMonthEventShown }: { events: IEvent[], isMonthEventShown?: boolean }) {
     this.events = events;
     this.isMonthEventShown = isMonthEventShown;
@@ -156,6 +160,10 @@ export default class ScomCalendar extends Module {
   }
 
   private dragStartHandler(event: MouseEvent | TouchEvent) {
+    if (this.isTouchDevice && event instanceof MouseEvent) {
+      event.preventDefault();
+      return false;
+    }
     if (event instanceof TouchEvent) {
       this.pos1 = {
         x: event.touches[0].clientX,
@@ -179,6 +187,10 @@ export default class ScomCalendar extends Module {
   }
 
   private dragHandler(event: MouseEvent | TouchEvent) {
+    if (this.isTouchDevice && event instanceof MouseEvent) {
+      event.preventDefault();
+      return false;
+    }
     if (event instanceof TouchEvent) {
       this.pos2 = {
         x: this.pos1.x - event.touches[0].clientX,
@@ -252,6 +264,21 @@ export default class ScomCalendar extends Module {
       return false;
     }
   }
+
+  private getDeviceType = () => {
+    const ua = navigator.userAgent;
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+      return "tablet";
+    }
+    if (
+      /Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(
+        ua
+      )
+    ) {
+      return "mobile";
+    }
+    return "desktop";
+  };
 
   private onSwipeView(direction?: 1 | -1, mode: IViewMode = 'full') {
     if (mode === 'week') {
