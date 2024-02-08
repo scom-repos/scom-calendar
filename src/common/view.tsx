@@ -679,7 +679,7 @@ export class ScomCalendarView extends Module {
     this.initalDay = this.initialDate.getDay();
     this.updateNewDate(date);
     if (oldDate.getMonth() !== this.initialDate.getMonth()) direction = oldDate < this.initialDate ? 1 : -1;
-    if (!this.isPicker && direction) {
+    if (!this.isPicker && (direction || this.mode === 'full')) {
       if (this.mode !== 'week')
         this.onSwipeMonthEvents(direction);
       else
