@@ -906,14 +906,33 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 return;
             }
             const threshold = this.listStack.offsetWidth * 3;
-            const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            let outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            if (!outOfMonth) {
+                const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
+                const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
+                if (dateEl) {
+                    const dateData = dateEl.getAttribute('data-date');
+                    const [date, month, year] = dateData.split('-');
+                    if (this.initialDate.getMonth() !== month - 1) {
+                        outOfMonth = true;
+                    }
+                }
+            }
             if (outOfMonth) {
                 this.initialDate = new Date(year, month - 1, 1);
                 this.onMonthChangedFn(direction);
                 const { month: newMonth, year: newYear } = this.initialData;
                 const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
                 this.onScroll(this.listStack, direction);
-                const factor = direction === 1 ? 0 : 4;
+                let factor = direction === 1 ? 0 : 4;
+                const newDateEl = newMonthEl.children?.[factor]?.children?.[this.initalDay];
+                if (newDateEl) {
+                    const dateData = newDateEl.getAttribute('data-date');
+                    const [date, month, year] = dateData.split('-');
+                    if (newMonth != month) {
+                        factor += direction;
+                    }
+                }
                 newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
                 this.activeDateWeek(newMonthEl, factor);
             }

@@ -219,7 +219,7 @@ export default class ScomCalendar extends Module {
     if (Math.abs(this.pos2.x) > Math.abs(this.pos2.y)) {
       if (Math.abs(this.pos2.x) > this.threshold) {
         this.isHorizontalSwiping = true;
-        let direction: 1 | -1 = this.pos2.x > 0 ? 1 : -1;
+        let direction = this.pos2.x > 0 ? 1 : -1;
         const mode = this.calendarViewMode;
         this.onSwipeView(direction, mode);
       }
@@ -277,7 +277,7 @@ export default class ScomCalendar extends Module {
     return "desktop";
   };
 
-  private onSwipeView(direction?: 1 | -1, mode: IViewMode = 'full') {
+  private onSwipeView(direction?: number, mode: IViewMode = 'full') {
     if (mode === 'week') {
       this.calendarView.onSwipeWeek(direction);
     } else if (mode === 'month') {

@@ -183,12 +183,12 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private onSlideChanged;
         private onSelectedDateChanged;
         private animateFn;
-        onSwipeFullMonth(direction?: 1 | -1): {
+        onSwipeFullMonth(direction?: number): {
             month: number;
             year: number;
         };
-        onSwipeMonthEvents(direction?: 1 | -1): void;
-        onSwipeWeek(direction?: 1 | -1): void;
+        onSwipeMonthEvents(direction?: number): void;
+        onSwipeWeek(direction?: number): void;
         private activeDateWeek;
         private onScroll;
         private testSupportsSmoothScroll;
@@ -222,7 +222,7 @@ declare module "@scom/scom-calendar/common/monthPicker.tsx" {
         set date(value: string);
         setData(date: string): void;
         private onDateClick;
-        onSwipeFullMonth(direction: 1 | -1): {
+        onSwipeFullMonth(direction: number): {
             month: number;
             year: number;
         };
