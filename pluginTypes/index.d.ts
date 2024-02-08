@@ -183,11 +183,11 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private onSlideChanged;
         private onSelectedDateChanged;
         private animateFn;
-        onSwipeFullMonth(direction?: number): {
+        onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean): {
             month: number;
             year: number;
         };
-        onSwipeMonthEvents(direction?: number): void;
+        onSwipeMonthEvents(direction?: number, isStartOfMonth?: boolean): void;
         onSwipeWeek(direction?: number, outOfMonth?: boolean): void;
         private activeDateWeek;
         private onScroll;

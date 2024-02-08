@@ -281,9 +281,9 @@ export default class ScomCalendar extends Module {
     if (mode === 'week') {
       this.calendarView.onSwipeWeek(direction);
     } else if (mode === 'month') {
-      this.calendarView.onSwipeMonthEvents(direction);
+      this.calendarView.onSwipeMonthEvents(direction, true);
     } else {
-      this.calendarView.onSwipeFullMonth(direction);
+      this.calendarView.onSwipeFullMonth(direction, true);
     }
   }
 

@@ -732,9 +732,16 @@ export class ScomCalendarView extends Module {
     }
   }
 
-  private onMonthChangedFn(direction: number) {
+  private onMonthChangedFn(direction: number, isStartOfMonth?: boolean) {
     this.oldMonth = `${this.currentMonth.month}-${this.currentMonth.year}`;
-    this.initialDate.setMonth(this.currentMonth.month - 1 + direction);
+    const month = this.currentMonth.month - 1 + direction;
+    if (isStartOfMonth) {
+      const currentDate = new Date();
+      const date = currentDate.getFullYear() === this.initialDate.getFullYear() && currentDate.getMonth() === month ? currentDate.getDate() : 1;
+      this.initialDate = new Date(this.initialDate.getFullYear(), month, date);
+    } else {
+      this.initialDate.setMonth(month);
+    }
     this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
     this.renderUI(direction);
     if (this.onMonthChanged) this.onMonthChanged({...this.currentMonth});
@@ -796,7 +803,7 @@ export class ScomCalendarView extends Module {
     requestAnimationFrame(animateScroll);
   }
 
-  onSwipeFullMonth(direction?: number) {
+  onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean) {
     this.mode = 'full';
     const { event } = this.updateDatesHeight();
     this.updateStyle({
@@ -807,13 +814,13 @@ export class ScomCalendarView extends Module {
     });
 
     if (direction) {
-      this.onMonthChangedFn(direction);
+      this.onMonthChangedFn(direction, isStartOfMonth);
       this.onScroll(this.listStack, direction);
     }
     return {...this.currentMonth};
   }
 
-  onSwipeMonthEvents(direction?: number) {
+  onSwipeMonthEvents(direction?: number, isStartOfMonth?: boolean) {
     this.mode = 'month';
     const { event } = this.updateDatesHeight();
     this.updateStyle({
@@ -824,7 +831,7 @@ export class ScomCalendarView extends Module {
     });
 
     if (direction) {
-      this.onMonthChangedFn(direction);
+      this.onMonthChangedFn(direction, isStartOfMonth);
       this.onScroll(this.listStack, direction);
     }
     // const { date } = this.initialData;

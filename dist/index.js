@@ -790,9 +790,17 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             };
         }
-        onMonthChangedFn(direction) {
+        onMonthChangedFn(direction, isStartOfMonth) {
             this.oldMonth = `${this.currentMonth.month}-${this.currentMonth.year}`;
-            this.initialDate.setMonth(this.currentMonth.month - 1 + direction);
+            const month = this.currentMonth.month - 1 + direction;
+            if (isStartOfMonth) {
+                const currentDate = new Date();
+                const date = currentDate.getFullYear() === this.initialDate.getFullYear() && currentDate.getMonth() === month ? currentDate.getDate() : 1;
+                this.initialDate = new Date(this.initialDate.getFullYear(), month, date);
+            }
+            else {
+                this.initialDate.setMonth(month);
+            }
             this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
             this.renderUI(direction);
             if (this.onMonthChanged)
@@ -853,7 +861,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const startTime = performance.now();
             requestAnimationFrame(animateScroll);
         }
-        onSwipeFullMonth(direction) {
+        onSwipeFullMonth(direction, isStartOfMonth) {
             this.mode = 'full';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -863,12 +871,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction);
+                this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             return { ...this.currentMonth };
         }
-        onSwipeMonthEvents(direction) {
+        onSwipeMonthEvents(direction, isStartOfMonth) {
             this.mode = 'month';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -878,7 +886,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction);
+                this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             // const { date } = this.initialData;
@@ -2005,10 +2013,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.calendarView.onSwipeWeek(direction);
             }
             else if (mode === 'month') {
-                this.calendarView.onSwipeMonthEvents(direction);
+                this.calendarView.onSwipeMonthEvents(direction, true);
             }
             else {
-                this.calendarView.onSwipeFullMonth(direction);
+                this.calendarView.onSwipeFullMonth(direction, true);
             }
         }
         onUpdateMonth(data) {
