@@ -61,7 +61,7 @@ export class ScomCalendarMonthPicker extends Module {
     if (this.onChanged) this.onChanged(date);
   }
 
-  onSwipeFullMonth(direction: 1 | -1) {
+  onSwipeFullMonth(direction: number) {
     return this.monthView.onSwipeFullMonth(direction);
   }
 

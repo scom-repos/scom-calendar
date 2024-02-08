@@ -317,9 +317,9 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ScomCalendarView = void 0;
     const Theme = components_4.Styles.Theme.ThemeVars;
-    const DATES_PER_SLIDE = 35;
+    const DATES_PER_SLIDE = 42;
     const DAYS = 7;
-    const ROWS = 5;
+    const ROWS = 6;
     const defaultHolidayColor = Theme.colors.info.main;
     const defaultEventColor = Theme.colors.primary.main;
     const currentColor = Theme.colors.secondary.main;
@@ -574,7 +574,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
                 const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
                 const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
-                const isSelectedDate = this.initialDate.getDate() === item.date;
+                const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
                 const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
                 const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
                     this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
@@ -735,14 +735,18 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             if (isSwiping)
                 return;
             this.updateOldDate();
+            let direction;
+            const oldDate = new Date(this.initialData.year, this.initialData.month - 1, this.initialData.date);
             this.initialDate = new Date(date.year, date.month - 1, date.date);
             this.initalDay = this.initialDate.getDay();
             this.updateNewDate(date);
-            if (this.mode === 'full' && !this.isPicker) {
-                if (this.isMonthEventShown)
-                    this.onSwipeMonthEvents();
+            if (oldDate.getMonth() !== this.initialDate.getMonth())
+                direction = oldDate < this.initialDate ? 1 : -1;
+            if (!this.isPicker && (direction || this.mode === 'full')) {
+                if (this.mode !== 'week')
+                    this.onSwipeMonthEvents(direction);
                 else
-                    this.onSwipeWeek();
+                    this.onSwipeWeek(direction);
             }
             const { month, year } = this.currentMonth;
             const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
@@ -790,9 +794,17 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             };
         }
-        onMonthChangedFn(direction) {
+        onMonthChangedFn(direction, isStartOfMonth) {
             this.oldMonth = `${this.currentMonth.month}-${this.currentMonth.year}`;
-            this.initialDate.setMonth(this.currentMonth.month - 1 + direction);
+            const month = this.currentMonth.month - 1 + direction;
+            if (isStartOfMonth) {
+                const currentDate = new Date();
+                const date = currentDate.getFullYear() === this.initialDate.getFullYear() && currentDate.getMonth() === month ? currentDate.getDate() : 1;
+                this.initialDate = new Date(this.initialDate.getFullYear(), month, date);
+            }
+            else {
+                this.initialDate.setMonth(month);
+            }
             this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
             this.renderUI(direction);
             if (this.onMonthChanged)
@@ -806,13 +818,21 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
         }
         onSelectedDateChanged(data, index) {
             this.updateOldDate();
+            const oldDate = new Date(this.initialData.year, this.initialData.month - 1, this.initialData.date);
             const oldDay = this.initialDate.getDay();
             const { date, month, year } = data;
             this.initialDate = new Date(year, month - 1, date);
+            if (oldDate.getTime() === this.initialDate.getTime())
+                this.initialDate.setDate(date - 1);
             this.initalDay = this.initialDate.getDay();
             this.updateNewDate(data);
+            const isMonthChanged = oldDate.getMonth() !== this.initialDate.getMonth();
+            const direction = oldDate < this.initialDate ? 1 : -1;
             if (this.isWeekMode) {
-                if (oldDay === 6 && (this.initalDay === 6 || this.initalDay === 0)) {
+                if (isMonthChanged) {
+                    this.onSwipeWeek(direction, true);
+                }
+                else if (oldDay === 6 && (this.initalDay === 6 || this.initalDay === 0)) {
                     this.onSwipeWeek(1);
                 }
                 else if (oldDay === 0 && (this.initalDay === 6 || this.initalDay === 0)) {
@@ -820,7 +840,10 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             }
             else if (this.mode === 'month') {
-                if (this.initalDay === 6 && index === 34) {
+                if (isMonthChanged) {
+                    this.onSwipeMonthEvents(direction);
+                }
+                else if (this.initalDay === 6 && index === 34) {
                     this.onSwipeMonthEvents(1);
                 }
                 else if (this.initalDay === 0 && index === 0) {
@@ -842,7 +865,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const startTime = performance.now();
             requestAnimationFrame(animateScroll);
         }
-        onSwipeFullMonth(direction) {
+        onSwipeFullMonth(direction, isStartOfMonth) {
             this.mode = 'full';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -852,12 +875,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction);
+                this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             return { ...this.currentMonth };
         }
-        onSwipeMonthEvents(direction) {
+        onSwipeMonthEvents(direction, isStartOfMonth) {
             this.mode = 'month';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -867,7 +890,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction);
+                this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             // const { date } = this.initialData;
@@ -877,7 +900,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             // const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
             // this.eventSlider.activeSlide = index;
         }
-        onSwipeWeek(direction) {
+        onSwipeWeek(direction, outOfMonth) {
             this.mode = 'week';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -905,15 +928,37 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
                 return;
             }
-            const threshold = this.listStack.offsetWidth * 3;
-            const outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            const threshold = this.listStack.offsetWidth * 4;
+            if (outOfMonth == null)
+                outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            if (!outOfMonth) {
+                const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
+                const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
+                if (dateEl) {
+                    const dateData = dateEl.getAttribute('data-date');
+                    const [date, month, year] = dateData.split('-');
+                    if (this.initialDate.getMonth() !== month - 1) {
+                        outOfMonth = true;
+                    }
+                }
+            }
             if (outOfMonth) {
                 this.initialDate = new Date(year, month - 1, 1);
                 this.onMonthChangedFn(direction);
                 const { month: newMonth, year: newYear } = this.initialData;
                 const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
                 this.onScroll(this.listStack, direction);
-                const factor = direction === 1 ? 0 : 4;
+                let factor = direction === 1 ? 0 : 5;
+                const newDateEl = newMonthEl.children?.[factor]?.children?.[this.initalDay];
+                if (newDateEl) {
+                    const dateData = newDateEl.getAttribute('data-date');
+                    const [date, month, year] = dateData.split('-');
+                    if (newMonth != month) {
+                        factor += direction;
+                        if (direction < 0 && date >= 8)
+                            factor += direction;
+                    }
+                }
                 newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;
                 this.activeDateWeek(newMonthEl, factor);
             }
@@ -1972,10 +2017,10 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
                 this.calendarView.onSwipeWeek(direction);
             }
             else if (mode === 'month') {
-                this.calendarView.onSwipeMonthEvents(direction);
+                this.calendarView.onSwipeMonthEvents(direction, true);
             }
             else {
-                this.calendarView.onSwipeFullMonth(direction);
+                this.calendarView.onSwipeFullMonth(direction, true);
             }
         }
         onUpdateMonth(data) {
