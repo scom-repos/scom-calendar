@@ -317,9 +317,9 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ScomCalendarView = void 0;
     const Theme = components_4.Styles.Theme.ThemeVars;
-    const DATES_PER_SLIDE = 35;
+    const DATES_PER_SLIDE = 42;
     const DAYS = 7;
-    const ROWS = 5;
+    const ROWS = 6;
     const defaultHolidayColor = Theme.colors.info.main;
     const defaultEventColor = Theme.colors.primary.main;
     const currentColor = Theme.colors.secondary.main;
@@ -574,7 +574,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
                 const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
                 const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
-                const isSelectedDate = this.initialDate.getDate() === item.date;
+                const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
                 const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
                 const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
                     this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
@@ -806,13 +806,21 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
         }
         onSelectedDateChanged(data, index) {
             this.updateOldDate();
+            const oldDate = new Date(this.initialData.year, this.initialData.month - 1, this.initialData.date);
             const oldDay = this.initialDate.getDay();
             const { date, month, year } = data;
             this.initialDate = new Date(year, month - 1, date);
+            if (oldDate.getTime() === this.initialDate.getTime())
+                this.initialDate.setDate(date - 1);
             this.initalDay = this.initialDate.getDay();
             this.updateNewDate(data);
+            const isMonthChanged = oldDate.getMonth() !== this.initialDate.getMonth();
+            const direction = oldDate < this.initialDate ? 1 : -1;
             if (this.isWeekMode) {
-                if (oldDay === 6 && (this.initalDay === 6 || this.initalDay === 0)) {
+                if (isMonthChanged) {
+                    this.onSwipeWeek(direction, true);
+                }
+                else if (oldDay === 6 && (this.initalDay === 6 || this.initalDay === 0)) {
                     this.onSwipeWeek(1);
                 }
                 else if (oldDay === 0 && (this.initalDay === 6 || this.initalDay === 0)) {
@@ -820,7 +828,10 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             }
             else if (this.mode === 'month') {
-                if (this.initalDay === 6 && index === 34) {
+                if (isMonthChanged) {
+                    this.onSwipeMonthEvents(direction);
+                }
+                else if (this.initalDay === 6 && index === 34) {
                     this.onSwipeMonthEvents(1);
                 }
                 else if (this.initalDay === 0 && index === 0) {
@@ -877,7 +888,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             // const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
             // this.eventSlider.activeSlide = index;
         }
-        onSwipeWeek(direction) {
+        onSwipeWeek(direction, outOfMonth) {
             this.mode = 'week';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -905,8 +916,9 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
                 return;
             }
-            const threshold = this.listStack.offsetWidth * 3;
-            let outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
+            const threshold = this.listStack.offsetWidth * 4;
+            if (outOfMonth == null)
+                outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
             if (!outOfMonth) {
                 const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
                 const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
@@ -924,13 +936,15 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 const { month: newMonth, year: newYear } = this.initialData;
                 const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
                 this.onScroll(this.listStack, direction);
-                let factor = direction === 1 ? 0 : 4;
+                let factor = direction === 1 ? 0 : 5;
                 const newDateEl = newMonthEl.children?.[factor]?.children?.[this.initalDay];
                 if (newDateEl) {
                     const dateData = newDateEl.getAttribute('data-date');
                     const [date, month, year] = dateData.split('-');
                     if (newMonth != month) {
                         factor += direction;
+                        if (direction < 0 && date >= 8)
+                            factor += direction;
                     }
                 }
                 newMonthEl.scrollLeft = factor * newMonthEl.offsetWidth;

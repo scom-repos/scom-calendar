@@ -188,7 +188,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
             year: number;
         };
         onSwipeMonthEvents(direction?: number): void;
-        onSwipeWeek(direction?: number): void;
+        onSwipeWeek(direction?: number, outOfMonth?: boolean): void;
         private activeDateWeek;
         private onScroll;
         private testSupportsSmoothScroll;
