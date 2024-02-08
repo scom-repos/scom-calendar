@@ -680,10 +680,10 @@ export class ScomCalendarView extends Module {
     this.updateNewDate(date);
     if (oldDate.getMonth() !== this.initialDate.getMonth()) direction = oldDate < this.initialDate ? 1 : -1;
     if (!this.isPicker && (direction || this.mode === 'full')) {
-      if (this.mode !== 'week')
-        this.onSwipeMonthEvents(direction);
-      else
+      if (this.mode === 'week' || !this.isMonthEventShown)
         this.onSwipeWeek(direction);
+      else
+        this.onSwipeMonthEvents(direction);
     }
     const { month, year } = this.currentMonth;
     const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
