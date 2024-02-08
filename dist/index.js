@@ -735,14 +735,18 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             if (isSwiping)
                 return;
             this.updateOldDate();
+            let direction;
+            const oldDate = new Date(this.initialData.year, this.initialData.month - 1, this.initialData.date);
             this.initialDate = new Date(date.year, date.month - 1, date.date);
             this.initalDay = this.initialDate.getDay();
             this.updateNewDate(date);
-            if (this.mode === 'full' && !this.isPicker) {
-                if (this.isMonthEventShown)
-                    this.onSwipeMonthEvents();
+            if (oldDate.getMonth() !== this.initialDate.getMonth())
+                direction = oldDate < this.initialDate ? 1 : -1;
+            if (!this.isPicker && direction) {
+                if (this.mode !== 'week')
+                    this.onSwipeMonthEvents(direction);
                 else
-                    this.onSwipeWeek();
+                    this.onSwipeWeek(direction);
             }
             const { month, year } = this.currentMonth;
             const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
