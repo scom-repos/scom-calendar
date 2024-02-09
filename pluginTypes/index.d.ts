@@ -129,7 +129,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private initialDate;
         private currentDate;
         private oldMonth;
-        private initalDay;
+        private initialDay;
         private currentMonth;
         private currentStyle;
         private selectedDate;
@@ -193,7 +193,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
             year: number;
         }>;
         onSwipeMonthEvents(direction?: number, isStartOfMonth?: boolean): Promise<void>;
-        onSwipeWeek(direction?: number, outOfMonth?: boolean): Promise<void>;
+        onSwipeWeek(direction?: number, outOfMonth?: boolean, isSwipe?: boolean): Promise<void>;
         private activeDateWeek;
         private onScroll;
         private testSupportsSmoothScroll;
