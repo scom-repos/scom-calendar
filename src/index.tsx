@@ -345,14 +345,6 @@ export default class ScomCalendar extends Module {
     this.setData({ events, isMonthEventShown });
   }
 
-  showLoadingSpinner() {
-    this.pnlLoadingSpinner.visible = true;
-  }
-
-  hideLoadingSpinner() {
-    this.pnlLoadingSpinner.visible = false;
-  }
-
   render(): void {
     return (
       <i-vstack

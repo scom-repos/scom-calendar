@@ -2083,12 +2083,6 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
             this.setData({ events, isMonthEventShown });
         }
-        showLoadingSpinner() {
-            this.pnlLoadingSpinner.visible = true;
-        }
-        hideLoadingSpinner() {
-            this.pnlLoadingSpinner.visible = false;
-        }
         render() {
             return (this.$render("i-vstack", { position: "relative", background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
                 this.$render("i-vstack", { id: "pnlLoadingSpinner", position: "absolute", top: 0, bottom: 0, left: 0, right: 0, zIndex: 99999, background: { color: Theme.background.main }, class: "i-loading-overlay", visible: false },

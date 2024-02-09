@@ -457,8 +457,6 @@ declare module "@scom/scom-calendar" {
         private onChangeDate;
         refresh(): void;
         init(): void;
-        showLoadingSpinner(): void;
-        hideLoadingSpinner(): void;
         render(): void;
     }
 }
