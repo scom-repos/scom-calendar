@@ -101,8 +101,8 @@ export class ScomCalendarSelect extends Module {
     this.iconLeft.visible = this.iconRight.visible = visible;
   }
 
-  private onMonthChanged(direction: 1|-1) {
-    const { month, year } = this.monthPicker.onSwipeFullMonth(direction);
+  private async onMonthChanged(direction: 1|-1) {
+    const { month, year } = await this.monthPicker.onSwipeFullMonth(direction);
     this.initialDate.setMonth(month - 1);
     this.initialDate.setFullYear(year);
     this.monthPicker.date = this.initialDate.toISOString();
