@@ -30,8 +30,10 @@ type callbackType = (data: IEvent, event: MouseEvent) => void;
 type swipeCallbackType = () => boolean;
 type selectCallbackType = (date: string) => void;
 type onMonthChangedCallbackType = (value: {month: number, year: number}) => void;
+type onMonthRenderCallbackType = () => void;
 
 interface ScomCalendarViewElement extends ControlElement {
+  loadingSpinner?: Control;
   holidays?: IHoliday[];
   events?: IEvent[];
   mode?: IViewMode;
@@ -81,6 +83,7 @@ export class ScomCalendarView extends Module {
   private currentMonth: { month: number, year: number };
   private currentStyle: string = '';
   private selectedDate: Date;
+  private _loadingSpinner: Control;
 
   private _data: IViewData;
 
@@ -88,6 +91,8 @@ export class ScomCalendarView extends Module {
   onDateClicked: selectCallbackType;
   onSwiping: swipeCallbackType;
   onMonthChanged: onMonthChangedCallbackType;
+  OnMonthRenderStart: onMonthRenderCallbackType;
+  OnMonthRenderEnd: onMonthRenderCallbackType;
 
   constructor(parent?: Container, options?: any) {
     super(parent, options);
@@ -338,99 +343,103 @@ export class ScomCalendarView extends Module {
       this.updateNewDate({ date: this.initialDate.getDate(), month: month, year: year });
       return;
     }
-    this.selectedDate = new Date(this.initialDate);
+    if (this._loadingSpinner) this._loadingSpinner.visible = true;
+    setTimeout(() => {
+      this.selectedDate = new Date(this.initialDate);
 
-    const gridDates = <i-stack
-      direction='vertical'
-      width={'100%'}
-      stack={{shrink: '0', grow: 'var(--grow, 0)'}}
-      overflow={{x: 'auto', y: 'hidden'}}
-      class={`${swipeStyle} month-row`}
-      position='relative'
-    ></i-stack>
-    gridDates.setAttribute('data-month', this.monthKey);
+      const gridDates = <i-stack
+        direction='vertical'
+        width={'100%'}
+        stack={{shrink: '0', grow: 'var(--grow, 0)'}}
+        overflow={{x: 'auto', y: 'hidden'}}
+        class={`${swipeStyle} month-row`}
+        position='relative'
+      ></i-stack>
+      gridDates.setAttribute('data-month', this.monthKey);
 
-    for (let i = 0; i < ROWS; i++) {
-      gridDates.append(
-        <i-grid-layout
-          border={{top: {width: '1px', style: 'solid', color: 'var(--border-color)'}}}
-          width={'100%'}
-          templateRows={['1fr']}
-          templateColumns={[`repeat(${DAYS}, 1fr)`]}
-          gap={{ column: '0.25rem' }}
-          stack={{shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)'}}
-          overflow={{x: 'auto', y: 'hidden'}}
-          position='relative'
-          class="week-row"
-        ></i-grid-layout>
-      )
-    }
-
-    const dates = [...this.datesInMonth];
-    for (let i = 0; i < dates.length; i++) {
-      const rowIndex = Math.floor(i / DAYS);
-      if (!gridDates.children[rowIndex]) break;
-      const columnIndex = i % DAYS;
-      const item = dates[i];
-      const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
-      const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary
-      const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
-      const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-      const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
-      const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
-      const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
-      const el = (
-        <i-vstack
-          gap="0.125rem"
-          margin={{top: '0.125rem', bottom: '0.125rem'}}
-          padding={{top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem'}}
-          border={{radius: '0.25rem', width: '1px', style: 'solid', color: borderColor}}
-          cursor='pointer'
-          overflow={'hidden'}
-          onClick={(target: VStack, event: MouseEvent) => this.onDateClick(target, event, item)}
-        >
-          <i-label
-            caption={`${item.date}`}
-            font={{size: '1rem', weight: 500, color }}
-            opacity={inMonth ? 1 : 0.36}
-            padding={{top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem'}}
-            border={{radius: '0.125rem'}}
-            background={{color: bgColor}}
-            class="text-center"
-          ></i-label>
-        </i-vstack>
-      );
-      el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
-      el.setAttribute('data-week', `${rowIndex}`);
-      if (holiday) {
-        const holidayEl = this.renderHoliday(holiday, columnIndex);
-        el.append(holidayEl);
+      for (let i = 0; i < ROWS; i++) {
+        gridDates.append(
+          <i-grid-layout
+            border={{top: {width: '1px', style: 'solid', color: 'var(--border-color)'}}}
+            width={'100%'}
+            templateRows={['1fr']}
+            templateColumns={[`repeat(${DAYS}, 1fr)`]}
+            gap={{ column: '0.25rem' }}
+            stack={{shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)'}}
+            overflow={{x: 'auto', y: 'hidden'}}
+            position='relative'
+            class="week-row"
+          ></i-grid-layout>
+        )
       }
-      if (events?.length) {
-        for (let event of events) {
-          const eventEl = this.renderEvent(event, columnIndex);
-          el.append(eventEl);
+
+      const dates = [...this.datesInMonth];
+      for (let i = 0; i < dates.length; i++) {
+        const rowIndex = Math.floor(i / DAYS);
+        if (!gridDates.children[rowIndex]) break;
+        const columnIndex = i % DAYS;
+        const item = dates[i];
+        const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
+        const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary
+        const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
+        const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
+        const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+        const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
+        const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
+        const el = (
+          <i-vstack
+            gap="0.125rem"
+            margin={{top: '0.125rem', bottom: '0.125rem'}}
+            padding={{top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem'}}
+            border={{radius: '0.25rem', width: '1px', style: 'solid', color: borderColor}}
+            cursor='pointer'
+            overflow={'hidden'}
+            onClick={(target: VStack, event: MouseEvent) => this.onDateClick(target, event, item)}
+          >
+            <i-label
+              caption={`${item.date}`}
+              font={{size: '1rem', weight: 500, color }}
+              opacity={inMonth ? 1 : 0.36}
+              padding={{top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem'}}
+              border={{radius: '0.125rem'}}
+              background={{color: bgColor}}
+              class="text-center"
+            ></i-label>
+          </i-vstack>
+        );
+        el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
+        el.setAttribute('data-week', `${rowIndex}`);
+        if (holiday) {
+          const holidayEl = this.renderHoliday(holiday, columnIndex);
+          el.append(holidayEl);
+        }
+        if (events?.length) {
+          for (let event of events) {
+            const eventEl = this.renderEvent(event, columnIndex);
+            el.append(eventEl);
+          }
+        }
+        gridDates.children[rowIndex].append(el);
+        if (isSelectedDate) {
+          this.updateOldDate();
+          this.pnlSelectedDate = el;
         }
       }
-      gridDates.children[rowIndex].append(el);
-      if (isSelectedDate) {
-        this.updateOldDate();
-        this.pnlSelectedDate = el;
-      }
-    }
 
-    const oldMonth = this.monthsMap.get(this.oldMonth);
-    this.listStack.append(gridDates);
-    if (oldMonth && direction) {
-      if (direction === 1) {
-        this.listStack.insertBefore(oldMonth, gridDates);
-      } else {
-        this.listStack.insertBefore(gridDates, oldMonth);
+      const oldMonth = this.monthsMap.get(this.oldMonth);
+      this.listStack.append(gridDates);
+      if (oldMonth && direction) {
+        if (direction === 1) {
+          this.listStack.insertBefore(oldMonth, gridDates);
+        } else {
+          this.listStack.insertBefore(gridDates, oldMonth);
+        }
       }
-    }
 
-    this.datesMap.set(`${month}-${year}`, dates);
-    this.monthsMap.set(`${month}-${year}`, gridDates);
+      this.datesMap.set(`${month}-${year}`, dates);
+      this.monthsMap.set(`${month}-${year}`, gridDates);
+      if (this._loadingSpinner) this._loadingSpinner.visible = false;
+    }, 10)
   }
 
   private renderEvent(event: IEvent, columnIndex: number) {
@@ -1026,6 +1035,7 @@ export class ScomCalendarView extends Module {
     this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
     this.onDateClicked = this.getAttribute('onDateClicked', true) || this.onDateClicked;
     this.onMonthChanged = this.getAttribute('onMonthChanged', true) || this.onMonthChanged;
+    this._loadingSpinner = this.getAttribute('loadingSpinner', true);
     const holidays = this.getAttribute('holidays', true);
     const events = this.getAttribute('events', true);
     const mode = this.getAttribute('mode', true, 'full');

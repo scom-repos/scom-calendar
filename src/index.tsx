@@ -6,7 +6,8 @@ import {
   customElements,
   Control,
   Styles,
-  Label
+  Label,
+  VStack
 } from '@ijstech/components'
 import { IEvent, IPos, IViewMode } from './interface'
 import holidayList from './data/holidays.json';
@@ -35,6 +36,7 @@ declare global {
 @customModule
 @customElements('i-scom-calendar')
 export default class ScomCalendar extends Module {
+  private pnlLoadingSpinner: VStack;
   private calendarView: ScomCalendarView;
   private selectEl: ScomCalendarSelect;
   private lbMonth: Label;
@@ -343,14 +345,48 @@ export default class ScomCalendar extends Module {
     this.setData({ events, isMonthEventShown });
   }
 
+  showLoadingSpinner() {
+    this.pnlLoadingSpinner.visible = true;
+  }
+
+  hideLoadingSpinner() {
+    this.pnlLoadingSpinner.visible = false;
+  }
+
   render(): void {
     return (
       <i-vstack
+        position="relative"
         background={{color: Theme.background.main}}
         width='100%'
         height={'100%'}
         maxHeight="-webkit-fill-available"
       >
+        <i-vstack
+          id="pnlLoadingSpinner"
+          position="absolute"
+          top={0}
+          bottom={0}
+          left={0}
+          right={0}
+          zIndex={99999}
+          background={{ color: Theme.background.main }}
+          class="i-loading-overlay"
+          visible={false}
+        >
+          <i-vstack
+            horizontalAlignment="center" verticalAlignment="center"
+            position="absolute" top="calc(50% - 0.75rem)" left="calc(50% - 0.75rem)"
+          >
+            <i-icon
+              class="i-loading-spinner_icon"
+              name="spinner"
+              width="1.5rem"
+              height="1.5rem"
+              fill={Theme.colors.primary.main}
+            />
+          </i-vstack>
+        </i-vstack>
         <i-hstack
           id="pnlHeader"
           verticalAlignment='center' horizontalAlignment='center' gap="0.25rem"
@@ -364,6 +400,7 @@ export default class ScomCalendar extends Module {
           id="calendarView"
           stack={{grow: '1'}}
           onMonthChanged={this.onUpdateMonth}
+          loadingSpinner={this.pnlLoadingSpinner}
           display='flex'
           maxHeight={'100%'}
           overflow={'hidden'}

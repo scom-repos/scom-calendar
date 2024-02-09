@@ -78,7 +78,7 @@ declare module "@scom/scom-calendar/assets.ts" {
 }
 /// <amd-module name="@scom/scom-calendar/common/view.tsx" />
 declare module "@scom/scom-calendar/common/view.tsx" {
-    import { Module, Container, ControlElement } from '@ijstech/components';
+    import { Module, Container, ControlElement, Control } from '@ijstech/components';
     import { IEvent, IHoliday, IViewMode } from "@scom/scom-calendar/interface.ts";
     type callbackType = (data: IEvent, event: MouseEvent) => void;
     type swipeCallbackType = () => boolean;
@@ -87,7 +87,9 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         month: number;
         year: number;
     }) => void;
+    type onMonthRenderCallbackType = () => void;
     interface ScomCalendarViewElement extends ControlElement {
+        loadingSpinner?: Control;
         holidays?: IHoliday[];
         events?: IEvent[];
         mode?: IViewMode;
@@ -131,11 +133,14 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private currentMonth;
         private currentStyle;
         private selectedDate;
+        private _loadingSpinner;
         private _data;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
         onSwiping: swipeCallbackType;
         onMonthChanged: onMonthChangedCallbackType;
+        OnMonthRenderStart: onMonthRenderCallbackType;
+        OnMonthRenderEnd: onMonthRenderCallbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarViewElement, parent?: Container): Promise<ScomCalendarView>;
         get holidays(): IHoliday[];
@@ -409,6 +414,7 @@ declare module "@scom/scom-calendar" {
         }
     }
     export default class ScomCalendar extends Module {
+        private pnlLoadingSpinner;
         private calendarView;
         private selectEl;
         private lbMonth;
@@ -451,6 +457,8 @@ declare module "@scom/scom-calendar" {
         private onChangeDate;
         refresh(): void;
         init(): void;
+        showLoadingSpinner(): void;
+        hideLoadingSpinner(): void;
         render(): void;
     }
 }

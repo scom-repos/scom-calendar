@@ -556,58 +556,64 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.updateNewDate({ date: this.initialDate.getDate(), month: month, year: year });
                 return;
             }
-            this.selectedDate = new Date(this.initialDate);
-            const gridDates = this.$render("i-stack", { direction: 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} month-row`, position: 'relative' });
-            gridDates.setAttribute('data-month', this.monthKey);
-            for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative', class: "week-row" }));
-            }
-            const dates = [...this.datesInMonth];
-            for (let i = 0; i < dates.length; i++) {
-                const rowIndex = Math.floor(i / DAYS);
-                if (!gridDates.children[rowIndex])
-                    break;
-                const columnIndex = i % DAYS;
-                const item = dates[i];
-                const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
-                const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
-                const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
-                const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-                const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
-                const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
-                const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
-                const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
-                    this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
-                el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
-                el.setAttribute('data-week', `${rowIndex}`);
-                if (holiday) {
-                    const holidayEl = this.renderHoliday(holiday, columnIndex);
-                    el.append(holidayEl);
+            if (this._loadingSpinner)
+                this._loadingSpinner.visible = true;
+            setTimeout(() => {
+                this.selectedDate = new Date(this.initialDate);
+                const gridDates = this.$render("i-stack", { direction: 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} month-row`, position: 'relative' });
+                gridDates.setAttribute('data-month', this.monthKey);
+                for (let i = 0; i < ROWS; i++) {
+                    gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative', class: "week-row" }));
                 }
-                if (events?.length) {
-                    for (let event of events) {
-                        const eventEl = this.renderEvent(event, columnIndex);
-                        el.append(eventEl);
+                const dates = [...this.datesInMonth];
+                for (let i = 0; i < dates.length; i++) {
+                    const rowIndex = Math.floor(i / DAYS);
+                    if (!gridDates.children[rowIndex])
+                        break;
+                    const columnIndex = i % DAYS;
+                    const item = dates[i];
+                    const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
+                    const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
+                    const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
+                    const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
+                    const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+                    const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
+                    const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
+                    const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
+                        this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
+                    el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
+                    el.setAttribute('data-week', `${rowIndex}`);
+                    if (holiday) {
+                        const holidayEl = this.renderHoliday(holiday, columnIndex);
+                        el.append(holidayEl);
+                    }
+                    if (events?.length) {
+                        for (let event of events) {
+                            const eventEl = this.renderEvent(event, columnIndex);
+                            el.append(eventEl);
+                        }
+                    }
+                    gridDates.children[rowIndex].append(el);
+                    if (isSelectedDate) {
+                        this.updateOldDate();
+                        this.pnlSelectedDate = el;
                     }
                 }
-                gridDates.children[rowIndex].append(el);
-                if (isSelectedDate) {
-                    this.updateOldDate();
-                    this.pnlSelectedDate = el;
+                const oldMonth = this.monthsMap.get(this.oldMonth);
+                this.listStack.append(gridDates);
+                if (oldMonth && direction) {
+                    if (direction === 1) {
+                        this.listStack.insertBefore(oldMonth, gridDates);
+                    }
+                    else {
+                        this.listStack.insertBefore(gridDates, oldMonth);
+                    }
                 }
-            }
-            const oldMonth = this.monthsMap.get(this.oldMonth);
-            this.listStack.append(gridDates);
-            if (oldMonth && direction) {
-                if (direction === 1) {
-                    this.listStack.insertBefore(oldMonth, gridDates);
-                }
-                else {
-                    this.listStack.insertBefore(gridDates, oldMonth);
-                }
-            }
-            this.datesMap.set(`${month}-${year}`, dates);
-            this.monthsMap.set(`${month}-${year}`, gridDates);
+                this.datesMap.set(`${month}-${year}`, dates);
+                this.monthsMap.set(`${month}-${year}`, gridDates);
+                if (this._loadingSpinner)
+                    this._loadingSpinner.visible = false;
+            }, 10);
         }
         renderEvent(event, columnIndex) {
             // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
@@ -1067,6 +1073,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
             this.onDateClicked = this.getAttribute('onDateClicked', true) || this.onDateClicked;
             this.onMonthChanged = this.getAttribute('onMonthChanged', true) || this.onMonthChanged;
+            this._loadingSpinner = this.getAttribute('loadingSpinner', true);
             const holidays = this.getAttribute('holidays', true);
             const events = this.getAttribute('events', true);
             const mode = this.getAttribute('mode', true, 'full');
@@ -2076,12 +2083,21 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             const isMonthEventShown = this.getAttribute('isMonthEventShown', true);
             this.setData({ events, isMonthEventShown });
         }
+        showLoadingSpinner() {
+            this.pnlLoadingSpinner.visible = true;
+        }
+        hideLoadingSpinner() {
+            this.pnlLoadingSpinner.visible = false;
+        }
         render() {
-            return (this.$render("i-vstack", { background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
+            return (this.$render("i-vstack", { position: "relative", background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
+                this.$render("i-vstack", { id: "pnlLoadingSpinner", position: "absolute", top: 0, bottom: 0, left: 0, right: 0, zIndex: 99999, background: { color: Theme.background.main }, class: "i-loading-overlay", visible: false },
+                    this.$render("i-vstack", { horizontalAlignment: "center", verticalAlignment: "center", position: "absolute", top: "calc(50% - 0.75rem)", left: "calc(50% - 0.75rem)" },
+                        this.$render("i-icon", { class: "i-loading-spinner_icon", name: "spinner", width: "1.5rem", height: "1.5rem", fill: Theme.colors.primary.main }))),
                 this.$render("i-hstack", { id: "pnlHeader", verticalAlignment: 'center', horizontalAlignment: 'center', gap: "0.25rem", cursor: 'pointer', onClick: this.onChangeDate },
                     this.$render("i-label", { id: "lbMonth", font: { size: '1.25rem', weight: 600 } }),
                     this.$render("i-label", { id: "lbYear", font: { size: '1.25rem', color: Theme.text.secondary } })),
-                this.$render("i-scom-calendar--view", { id: "calendarView", stack: { grow: '1' }, onMonthChanged: this.onUpdateMonth, display: 'flex', maxHeight: '100%', overflow: 'hidden' })));
+                this.$render("i-scom-calendar--view", { id: "calendarView", stack: { grow: '1' }, onMonthChanged: this.onUpdateMonth, loadingSpinner: this.pnlLoadingSpinner, display: 'flex', maxHeight: '100%', overflow: 'hidden' })));
         }
     };
     ScomCalendar = __decorate([
