@@ -78,7 +78,7 @@ declare module "@scom/scom-calendar/assets.ts" {
 }
 /// <amd-module name="@scom/scom-calendar/common/view.tsx" />
 declare module "@scom/scom-calendar/common/view.tsx" {
-    import { Module, Container, ControlElement } from '@ijstech/components';
+    import { Module, Container, ControlElement, Control } from '@ijstech/components';
     import { IEvent, IHoliday, IViewMode } from "@scom/scom-calendar/interface.ts";
     type callbackType = (data: IEvent, event: MouseEvent) => void;
     type swipeCallbackType = () => boolean;
@@ -87,7 +87,9 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         month: number;
         year: number;
     }) => void;
+    type onMonthRenderCallbackType = () => void;
     interface ScomCalendarViewElement extends ControlElement {
+        loadingSpinner?: Control;
         holidays?: IHoliday[];
         events?: IEvent[];
         mode?: IViewMode;
@@ -127,15 +129,18 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private initialDate;
         private currentDate;
         private oldMonth;
-        private initalDay;
+        private initialDay;
         private currentMonth;
         private currentStyle;
         private selectedDate;
+        private _loadingSpinner;
         private _data;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
         onSwiping: swipeCallbackType;
         onMonthChanged: onMonthChangedCallbackType;
+        OnMonthRenderStart: onMonthRenderCallbackType;
+        OnMonthRenderEnd: onMonthRenderCallbackType;
         constructor(parent?: Container, options?: any);
         static create(options?: ScomCalendarViewElement, parent?: Container): Promise<ScomCalendarView>;
         get holidays(): IHoliday[];
@@ -183,12 +188,12 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private onSlideChanged;
         private onSelectedDateChanged;
         private animateFn;
-        onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean): {
+        onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean): Promise<{
             month: number;
             year: number;
-        };
-        onSwipeMonthEvents(direction?: number, isStartOfMonth?: boolean): void;
-        onSwipeWeek(direction?: number, outOfMonth?: boolean): void;
+        }>;
+        onSwipeMonthEvents(direction?: number, isStartOfMonth?: boolean): Promise<void>;
+        onSwipeWeek(direction?: number, outOfMonth?: boolean, isSwipe?: boolean): Promise<void>;
         private activeDateWeek;
         private onScroll;
         private testSupportsSmoothScroll;
@@ -222,10 +227,10 @@ declare module "@scom/scom-calendar/common/monthPicker.tsx" {
         set date(value: string);
         setData(date: string): void;
         private onDateClick;
-        onSwipeFullMonth(direction: number): {
+        onSwipeFullMonth(direction: number): Promise<{
             month: number;
             year: number;
-        };
+        }>;
         init(): void;
         render(): void;
     }
@@ -409,6 +414,7 @@ declare module "@scom/scom-calendar" {
         }
     }
     export default class ScomCalendar extends Module {
+        private pnlLoadingSpinner;
         private calendarView;
         private selectEl;
         private lbMonth;

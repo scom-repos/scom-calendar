@@ -332,7 +332,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.initialDate = new Date();
             this.currentDate = new Date();
             this.oldMonth = '';
-            this.initalDay = 0;
+            this.initialDay = 0;
             this.currentStyle = '';
         }
         static async create(options, parent) {
@@ -501,9 +501,9 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.clear();
             this.renderUI();
         }
-        renderUI(direction) {
+        async renderUI(direction) {
             const { month, year } = this.initialData;
-            this.renderMonth(month, year, direction);
+            await this.renderMonth(month, year, direction);
             this.eventSlider.visible = !this.isPicker;
             if (!this.isPicker) {
                 this.renderEventSlider();
@@ -514,7 +514,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.mode = 'full';
             this.monthsMap = new Map();
             this.selectedMap = new Map();
-            this.initalDay = this.initialDate.getDay();
+            this.initialDay = this.initialDate.getDay();
             this.currentDate = new Date();
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -549,65 +549,74 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.gridHeader.append(el);
             }
         }
-        renderMonth(month, year, direction) {
+        async renderMonth(month, year, direction) {
             const gridMonth = this.monthsMap.get(this.monthKey);
             if (gridMonth) {
                 this.updateOldDate();
                 this.updateNewDate({ date: this.initialDate.getDate(), month: month, year: year });
                 return;
             }
-            this.selectedDate = new Date(this.initialDate);
-            const gridDates = this.$render("i-stack", { direction: 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} month-row`, position: 'relative' });
-            gridDates.setAttribute('data-month', this.monthKey);
-            for (let i = 0; i < ROWS; i++) {
-                gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative', class: "week-row" }));
-            }
-            const dates = [...this.datesInMonth];
-            for (let i = 0; i < dates.length; i++) {
-                const rowIndex = Math.floor(i / DAYS);
-                if (!gridDates.children[rowIndex])
-                    break;
-                const columnIndex = i % DAYS;
-                const item = dates[i];
-                const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
-                const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
-                const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
-                const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-                const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
-                const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
-                const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
-                const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
-                    this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
-                el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
-                el.setAttribute('data-week', `${rowIndex}`);
-                if (holiday) {
-                    const holidayEl = this.renderHoliday(holiday, columnIndex);
-                    el.append(holidayEl);
+            if (this._loadingSpinner)
+                this._loadingSpinner.visible = true;
+            await new Promise(async (resolve, reject) => {
+                this.selectedDate = new Date(this.initialDate);
+                const gridDates = this.$render("i-stack", { direction: 'vertical', width: '100%', stack: { shrink: '0', grow: 'var(--grow, 0)' }, overflow: { x: 'auto', y: 'hidden' }, class: `${view_css_1.swipeStyle} month-row`, position: 'relative' });
+                gridDates.setAttribute('data-month', this.monthKey);
+                for (let i = 0; i < ROWS; i++) {
+                    gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative', class: "week-row" }));
                 }
-                if (events?.length) {
-                    for (let event of events) {
-                        const eventEl = this.renderEvent(event, columnIndex);
-                        el.append(eventEl);
+                const dates = [...this.datesInMonth];
+                for (let i = 0; i < dates.length; i++) {
+                    const rowIndex = Math.floor(i / DAYS);
+                    if (!gridDates.children[rowIndex])
+                        break;
+                    const columnIndex = i % DAYS;
+                    const item = dates[i];
+                    const inMonth = this.initialDate.getMonth() + 1 === item.month && this.initialDate.getFullYear() === item.year;
+                    const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
+                    const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
+                    const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
+                    const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+                    const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
+                    const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
+                    const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
+                        this.$render("i-label", { caption: `${item.date}`, font: { size: '1rem', weight: 500, color }, opacity: inMonth ? 1 : 0.36, padding: { top: '0.25rem', bottom: '0.25rem', left: '0.25rem', right: '0.25rem' }, border: { radius: '0.125rem' }, background: { color: bgColor }, class: "text-center" })));
+                    el.setAttribute('data-date', `${item.date}-${item.month}-${item.year}`);
+                    el.setAttribute('data-week', `${rowIndex}`);
+                    if (holiday) {
+                        const holidayEl = this.renderHoliday(holiday, columnIndex);
+                        el.append(holidayEl);
+                    }
+                    if (events?.length) {
+                        for (let event of events) {
+                            const eventEl = this.renderEvent(event, columnIndex);
+                            el.append(eventEl);
+                        }
+                    }
+                    gridDates.children[rowIndex].append(el);
+                    if (isSelectedDate) {
+                        this.updateOldDate();
+                        this.pnlSelectedDate = el;
                     }
                 }
-                gridDates.children[rowIndex].append(el);
-                if (isSelectedDate) {
-                    this.updateOldDate();
-                    this.pnlSelectedDate = el;
+                const oldMonth = this.monthsMap.get(this.oldMonth);
+                this.listStack.append(gridDates);
+                if (oldMonth && direction) {
+                    if (direction === 1) {
+                        this.listStack.insertBefore(oldMonth, gridDates);
+                    }
+                    else {
+                        this.listStack.insertBefore(gridDates, oldMonth);
+                    }
                 }
-            }
-            const oldMonth = this.monthsMap.get(this.oldMonth);
-            this.listStack.append(gridDates);
-            if (oldMonth && direction) {
-                if (direction === 1) {
-                    this.listStack.insertBefore(oldMonth, gridDates);
-                }
-                else {
-                    this.listStack.insertBefore(gridDates, oldMonth);
-                }
-            }
-            this.datesMap.set(`${month}-${year}`, dates);
-            this.monthsMap.set(`${month}-${year}`, gridDates);
+                this.datesMap.set(`${month}-${year}`, dates);
+                this.monthsMap.set(`${month}-${year}`, gridDates);
+                setTimeout(() => {
+                    if (this._loadingSpinner)
+                        this._loadingSpinner.visible = false;
+                    resolve({});
+                }, 10);
+            });
         }
         renderEvent(event, columnIndex) {
             // const spanDays = moment(event.endDate).startOf('day').diff(moment(event.startDate).startOf('day'), 'days');
@@ -738,15 +747,15 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             let direction;
             const oldDate = new Date(this.initialData.year, this.initialData.month - 1, this.initialData.date);
             this.initialDate = new Date(date.year, date.month - 1, date.date);
-            this.initalDay = this.initialDate.getDay();
+            this.initialDay = this.initialDate.getDay();
             this.updateNewDate(date);
             if (oldDate.getMonth() !== this.initialDate.getMonth())
                 direction = oldDate < this.initialDate ? 1 : -1;
             if (!this.isPicker && (direction || this.mode === 'full')) {
-                if (this.mode !== 'week')
-                    this.onSwipeMonthEvents(direction);
+                if (this.mode === 'week' || !this.isMonthEventShown)
+                    this.onSwipeWeek(direction, direction != null, false);
                 else
-                    this.onSwipeWeek(direction);
+                    this.onSwipeMonthEvents(direction);
             }
             const { month, year } = this.currentMonth;
             const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
@@ -794,7 +803,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             };
         }
-        onMonthChangedFn(direction, isStartOfMonth) {
+        async onMonthChangedFn(direction, isStartOfMonth) {
             this.oldMonth = `${this.currentMonth.month}-${this.currentMonth.year}`;
             const month = this.currentMonth.month - 1 + direction;
             if (isStartOfMonth) {
@@ -806,7 +815,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 this.initialDate.setMonth(month);
             }
             this.currentMonth = { month: this.initialDate.getMonth() + 1, year: this.initialDate.getFullYear() };
-            this.renderUI(direction);
+            await this.renderUI(direction);
             if (this.onMonthChanged)
                 this.onMonthChanged({ ...this.currentMonth });
         }
@@ -824,7 +833,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.initialDate = new Date(year, month - 1, date);
             if (oldDate.getTime() === this.initialDate.getTime())
                 this.initialDate.setDate(date - 1);
-            this.initalDay = this.initialDate.getDay();
+            this.initialDay = this.initialDate.getDay();
             this.updateNewDate(data);
             const isMonthChanged = oldDate.getMonth() !== this.initialDate.getMonth();
             const direction = oldDate < this.initialDate ? 1 : -1;
@@ -832,10 +841,10 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 if (isMonthChanged) {
                     this.onSwipeWeek(direction, true);
                 }
-                else if (oldDay === 6 && (this.initalDay === 6 || this.initalDay === 0)) {
+                else if (oldDay === 6 && (this.initialDay === 6 || this.initialDay === 0)) {
                     this.onSwipeWeek(1);
                 }
-                else if (oldDay === 0 && (this.initalDay === 6 || this.initalDay === 0)) {
+                else if (oldDay === 0 && (this.initialDay === 6 || this.initialDay === 0)) {
                     this.onSwipeWeek(-1);
                 }
             }
@@ -843,10 +852,10 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 if (isMonthChanged) {
                     this.onSwipeMonthEvents(direction);
                 }
-                else if (this.initalDay === 6 && index === 34) {
+                else if (this.initialDay === 6 && index === 34) {
                     this.onSwipeMonthEvents(1);
                 }
-                else if (this.initalDay === 0 && index === 0) {
+                else if (this.initialDay === 0 && index === 0) {
                     this.onSwipeMonthEvents(-1);
                 }
             }
@@ -865,7 +874,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             const startTime = performance.now();
             requestAnimationFrame(animateScroll);
         }
-        onSwipeFullMonth(direction, isStartOfMonth) {
+        async onSwipeFullMonth(direction, isStartOfMonth) {
             this.mode = 'full';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -875,12 +884,12 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction, isStartOfMonth);
+                await this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             return { ...this.currentMonth };
         }
-        onSwipeMonthEvents(direction, isStartOfMonth) {
+        async onSwipeMonthEvents(direction, isStartOfMonth) {
             this.mode = 'month';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -890,7 +899,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 event
             });
             if (direction) {
-                this.onMonthChangedFn(direction, isStartOfMonth);
+                await this.onMonthChangedFn(direction, isStartOfMonth);
                 this.onScroll(this.listStack, direction);
             }
             // const { date } = this.initialData;
@@ -900,7 +909,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             // const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date && d.month === month);
             // this.eventSlider.activeSlide = index;
         }
-        onSwipeWeek(direction, outOfMonth) {
+        async onSwipeWeek(direction, outOfMonth, isSwipe = true) {
             this.mode = 'week';
             const { event } = this.updateDatesHeight();
             this.updateStyle({
@@ -933,7 +942,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 outOfMonth = (monthEl.scrollLeft > threshold && direction === 1) || (monthEl.scrollLeft === 0 && direction === -1);
             if (!outOfMonth) {
                 const week = Math.round(monthEl.scrollLeft / this.listStack.offsetWidth) + direction;
-                const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
+                const dateEl = monthEl.children?.[week]?.children?.[this.initialDay];
                 if (dateEl) {
                     const dateData = dateEl.getAttribute('data-date');
                     const [date, month, year] = dateData.split('-');
@@ -943,17 +952,18 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                 }
             }
             if (outOfMonth) {
-                this.initialDate = new Date(year, month - 1, 1);
-                this.onMonthChangedFn(direction);
+                if (isSwipe)
+                    this.initialDate = new Date(year, month - 1, 1);
+                await this.onMonthChangedFn(direction);
                 const { month: newMonth, year: newYear } = this.initialData;
                 const newMonthEl = this.monthsMap.get(`${newMonth}-${newYear}`);
                 this.onScroll(this.listStack, direction);
                 let factor = direction === 1 ? 0 : 5;
-                const newDateEl = newMonthEl.children?.[factor]?.children?.[this.initalDay];
+                const newDateEl = newMonthEl.children?.[factor]?.children?.[this.initialDay];
                 if (newDateEl) {
                     const dateData = newDateEl.getAttribute('data-date');
                     const [date, month, year] = dateData.split('-');
-                    if (newMonth != month) {
+                    if (newMonth != month || (!isSwipe && this.initialDate.getDate() != date)) {
                         factor += direction;
                         if (direction < 0 && date >= 8)
                             factor += direction;
@@ -969,7 +979,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             }
         }
         activeDateWeek(monthEl, week) {
-            const dateEl = monthEl.children?.[week]?.children?.[this.initalDay];
+            const dateEl = monthEl.children?.[week]?.children?.[this.initialDay];
             if (dateEl) {
                 this.updateOldDate();
                 const dateData = dateEl.getAttribute('data-date');
@@ -1067,6 +1077,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             this.onEventClicked = this.getAttribute('onEventClicked', true) || this.onEventClicked;
             this.onDateClicked = this.getAttribute('onDateClicked', true) || this.onDateClicked;
             this.onMonthChanged = this.getAttribute('onMonthChanged', true) || this.onMonthChanged;
+            this._loadingSpinner = this.getAttribute('loadingSpinner', true);
             const holidays = this.getAttribute('holidays', true);
             const events = this.getAttribute('events', true);
             const mode = this.getAttribute('mode', true, 'full');
@@ -1727,8 +1738,8 @@ define("@scom/scom-calendar/common/select.tsx", ["require", "exports", "@ijstech
             }
             this.iconLeft.visible = this.iconRight.visible = visible;
         }
-        onMonthChanged(direction) {
-            const { month, year } = this.monthPicker.onSwipeFullMonth(direction);
+        async onMonthChanged(direction) {
+            const { month, year } = await this.monthPicker.onSwipeFullMonth(direction);
             this.initialDate.setMonth(month - 1);
             this.initialDate.setFullYear(year);
             this.monthPicker.date = this.initialDate.toISOString();
@@ -2077,11 +2088,14 @@ define("@scom/scom-calendar", ["require", "exports", "@ijstech/components", "@sc
             this.setData({ events, isMonthEventShown });
         }
         render() {
-            return (this.$render("i-vstack", { background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
+            return (this.$render("i-vstack", { position: "relative", background: { color: Theme.background.main }, width: '100%', height: '100%', maxHeight: "-webkit-fill-available" },
+                this.$render("i-vstack", { id: "pnlLoadingSpinner", position: "absolute", top: 0, bottom: 0, left: 0, right: 0, zIndex: 99999, background: { color: Theme.background.main }, class: "i-loading-overlay", visible: false },
+                    this.$render("i-vstack", { horizontalAlignment: "center", verticalAlignment: "center", position: "absolute", top: "calc(50% - 0.75rem)", left: "calc(50% - 0.75rem)" },
+                        this.$render("i-icon", { class: "i-loading-spinner_icon", name: "spinner", width: "1.5rem", height: "1.5rem", fill: Theme.colors.primary.main }))),
                 this.$render("i-hstack", { id: "pnlHeader", verticalAlignment: 'center', horizontalAlignment: 'center', gap: "0.25rem", cursor: 'pointer', onClick: this.onChangeDate },
                     this.$render("i-label", { id: "lbMonth", font: { size: '1.25rem', weight: 600 } }),
                     this.$render("i-label", { id: "lbYear", font: { size: '1.25rem', color: Theme.text.secondary } })),
-                this.$render("i-scom-calendar--view", { id: "calendarView", stack: { grow: '1' }, onMonthChanged: this.onUpdateMonth, display: 'flex', maxHeight: '100%', overflow: 'hidden' })));
+                this.$render("i-scom-calendar--view", { id: "calendarView", stack: { grow: '1' }, onMonthChanged: this.onUpdateMonth, loadingSpinner: this.pnlLoadingSpinner, display: 'flex', maxHeight: '100%', overflow: 'hidden' })));
         }
     };
     ScomCalendar = __decorate([
