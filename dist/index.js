@@ -566,6 +566,8 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                     gridDates.append(this.$render("i-grid-layout", { border: { top: { width: '1px', style: 'solid', color: 'var(--border-color)' } }, width: '100%', templateRows: ['1fr'], templateColumns: [`repeat(${DAYS}, 1fr)`], gap: { column: '0.25rem' }, stack: { shrink: 'var(--inner-grow, 1)', grow: 'var(--inner-grow, 1)', basis: 'var(--inner-basis, 20%)' }, overflow: { x: 'auto', y: 'hidden' }, position: 'relative', class: "week-row" }));
                 }
                 const dates = [...this.datesInMonth];
+                this.datesMap.set(`${month}-${year}`, dates);
+                const calendarData = this.calendarData;
                 for (let i = 0; i < dates.length; i++) {
                     const rowIndex = Math.floor(i / DAYS);
                     if (!gridDates.children[rowIndex])
@@ -576,7 +578,7 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                     const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary;
                     const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
                     const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-                    const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+                    const { holiday = null, events = [] } = calendarData[`${item.date}-${item.month}-${item.year}`] || {};
                     const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
                     const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
                     const el = (this.$render("i-vstack", { gap: "0.125rem", margin: { top: '0.125rem', bottom: '0.125rem' }, padding: { top: '0.125rem', bottom: '0.125rem', left: '0.125rem', right: '0.125rem' }, border: { radius: '0.25rem', width: '1px', style: 'solid', color: borderColor }, cursor: 'pointer', overflow: 'hidden', onClick: (target, event) => this.onDateClick(target, event, item) },
@@ -609,7 +611,6 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
                         this.listStack.insertBefore(gridDates, oldMonth);
                     }
                 }
-                this.datesMap.set(`${month}-${year}`, dates);
                 this.monthsMap.set(`${month}-${year}`, gridDates);
                 setTimeout(() => {
                     if (this._loadingSpinner)
@@ -644,9 +645,10 @@ define("@scom/scom-calendar/common/view.tsx", ["require", "exports", "@ijstech/c
             let activeIndex = 0;
             const currentDate = this.initialDate.getDate();
             const currentMonth = this.initialDate.getMonth() + 1;
+            const calendarData = this.calendarData;
             for (let i = 0; i < this.datesInMonth.length; i++) {
                 const date = this.datesInMonth[i];
-                const { holiday = null, events = [] } = this.calendarData[`${date.date}-${date.month}-${date.year}`] || {};
+                const { holiday = null, events = [] } = calendarData[`${date.date}-${date.month}-${date.year}`] || {};
                 const eventEl = this.renderSliderItem(date, holiday, events);
                 itemsData.push({
                     name: '',
