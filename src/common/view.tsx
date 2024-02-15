@@ -502,9 +502,10 @@ export class ScomCalendarView extends Module {
     let activeIndex = 0;
     const currentDate = this.initialDate.getDate();
     const currentMonth = this.initialDate.getMonth() + 1;
+    const calendarData = this.calendarData;
     for (let i = 0; i < this.datesInMonth.length; i++) {
       const date = this.datesInMonth[i];
-      const { holiday = null, events = [] } = this.calendarData[`${date.date}-${date.month}-${date.year}`] || {};
+      const { holiday = null, events = [] } = calendarData[`${date.date}-${date.month}-${date.year}`] || {};
       const eventEl = this.renderSliderItem(date, holiday, events);
       itemsData.push({
         name: '',
