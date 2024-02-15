@@ -374,6 +374,8 @@ export class ScomCalendarView extends Module {
       }
 
       const dates = [...this.datesInMonth];
+      this.datesMap.set(`${month}-${year}`, dates);
+      const calendarData = this.calendarData;
       for (let i = 0; i < dates.length; i++) {
         const rowIndex = Math.floor(i / DAYS);
         if (!gridDates.children[rowIndex]) break;
@@ -383,7 +385,7 @@ export class ScomCalendarView extends Module {
         const defaultColor = i === rowIndex * DAYS ? Theme.colors.error.main : Theme.text.primary
         const color = this.isCurrentDate(item) ? Theme.colors.primary.contrastText : defaultColor;
         const bgColor = this.isCurrentDate(item) ? currentColor : 'transparent';
-        const { holiday = null, events = [] } = this.calendarData[`${item.date}-${item.month}-${item.year}`] || {};
+        const { holiday = null, events = [] } = calendarData[`${item.date}-${item.month}-${item.year}`] || {};
         const isSelectedDate = inMonth && this.initialDate.getDate() === item.date;
         const borderColor = isSelectedDate ? Theme.colors.primary.main : Theme.background.main;
         const el = (
@@ -436,7 +438,6 @@ export class ScomCalendarView extends Module {
         }
       }
 
-      this.datesMap.set(`${month}-${year}`, dates);
       this.monthsMap.set(`${month}-${year}`, gridDates);
       setTimeout(() => {
         if (this._loadingSpinner) this._loadingSpinner.visible = false;
