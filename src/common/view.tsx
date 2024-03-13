@@ -84,6 +84,7 @@ export class ScomCalendarView extends Module {
   private currentStyle: string = '';
   private selectedDate: Date;
   private _loadingSpinner: Control;
+  private sliderTimer: any = null;
 
   private _data: IViewData;
 
@@ -123,6 +124,7 @@ export class ScomCalendarView extends Module {
   }
   set mode(value: IViewMode) {
     this._data.mode = value ?? 'full';
+    this.eventSlider.visible = this.mode === 'week' && !this.isPicker;
   }
 
   get date() {
@@ -281,7 +283,6 @@ export class ScomCalendarView extends Module {
   private async renderUI(direction?: number) {
     const { month, year } = this.initialData;
     await this.renderMonth(month, year, direction);
-    this.eventSlider.visible = !this.isPicker;
     if (!this.isPicker) {
       this.renderEventSlider();
     }
@@ -343,7 +344,7 @@ export class ScomCalendarView extends Module {
       this.updateNewDate({ date: this.initialDate.getDate(), month: month, year: year });
       return;
     }
-    if (this._loadingSpinner) this._loadingSpinner.visible = true;
+    if (this._loadingSpinner && this.mode !== 'week') this._loadingSpinner.visible = true;
     await new Promise<any>(async (resolve, reject) => {
       this.selectedDate = new Date(this.initialDate);
 
@@ -692,6 +693,7 @@ export class ScomCalendarView extends Module {
     this.initialDate = new Date(date.year, date.month - 1, date.date);
     this.initialDay = this.initialDate.getDay();
     this.updateNewDate(date);
+    this.changeActiveSlide(date.date, date.month);
     if (oldDate.getMonth() !== this.initialDate.getMonth()) direction = oldDate < this.initialDate ? 1 : -1;
     if (!this.isPicker && (direction || this.mode === 'full')) {
       if (this.mode === 'week' || !this.isMonthEventShown)
@@ -699,11 +701,19 @@ export class ScomCalendarView extends Module {
       else
         this.onSwipeMonthEvents(direction);
     }
-    const { month, year } = this.currentMonth;
-    const index = this.datesMap.get(`${month}-${year}`).findIndex(d => d.date === date.date && d.month === date.month);
-    this.eventSlider.activeSlide = index;
-
     if (this.onDateClicked) this.onDateClicked(this.initialDate.toISOString());
+  }
+
+  private changeActiveSlide(date: number, month: number) {
+    this.eventSlider.transitionSpeed = 1;
+    const { month: currentMonth, year: currentYear } = this.currentMonth;
+    const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === date && d.month === month);
+    this.eventSlider.activeSlide = index;
+    const self = this;
+    this.sliderTimer = setTimeout(() => {
+      self.eventSlider.transitionSpeed = 500;
+      clearTimeout(self.sliderTimer);
+    }, 600)
   }
 
   private updateOldDate() {
@@ -801,25 +811,6 @@ export class ScomCalendarView extends Module {
     }
   }
 
-  private animateFn(framefn: any) {
-    const duration = 300;
-    const easing = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-
-    const animateScroll = (timestamp: number) => {
-      const progress = Math.min(1, (timestamp - startTime) / duration);
-      const easedProgress = easing(progress);
-
-      framefn(easedProgress);
-
-      if (progress < 1) {
-        requestAnimationFrame(animateScroll);
-      }
-    };
-
-    const startTime = performance.now();
-    requestAnimationFrame(animateScroll);
-  }
-
   async onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean) {
     this.mode = 'full';
     const { event } = this.updateDatesHeight();
@@ -877,12 +868,9 @@ export class ScomCalendarView extends Module {
       if (this.pnlSelectedDate) {
         const week = this.pnlSelectedDate.getAttribute('data-week') || 0;
         if (week) {
-          const startScrollLeft = monthEl.scrollLeft;
           const targetScrollLeft = monthEl.scrollLeft + (Number(week) * monthEl.offsetWidth);
-          this.animateFn((progress: number) => {
-            monthEl.scrollTo({
-              left: startScrollLeft + (targetScrollLeft - startScrollLeft) * progress
-            })
+          monthEl.scrollTo({
+            left: targetScrollLeft
           })
         }
       }
@@ -937,9 +925,7 @@ export class ScomCalendarView extends Module {
       if (date) {
         this.selectedDate = new Date(year, month, date);
         this.initialDate = new Date(year, month - 1, Number(date));
-        const { month: currentMonth, year: currentYear } = this.currentMonth;
-        const index = this.datesMap.get(`${currentMonth}-${currentYear}`).findIndex(d => d.date === Number(date) && d.month === Number(month));
-        this.eventSlider.activeSlide = index;
+        this.changeActiveSlide(Number(date), Number(month));
         this.pnlSelectedDate = dateEl;
         dateEl.border = { radius: '0.25rem', width: '1px', style: 'solid', color: `${Theme.colors.primary.main}!important` };
       }
