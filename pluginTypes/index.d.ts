@@ -134,6 +134,7 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private currentStyle;
         private selectedDate;
         private _loadingSpinner;
+        private sliderTimer;
         private _data;
         onEventClicked: callbackType;
         onDateClicked: selectCallbackType;
@@ -181,13 +182,13 @@ declare module "@scom/scom-calendar/common/view.tsx" {
         private renderSelectedEvent;
         private renderSelectedHoliday;
         private onDateClick;
+        private changeActiveSlide;
         private updateOldDate;
         private updateNewDate;
         private updateDatesHeight;
         private onMonthChangedFn;
         private onSlideChanged;
         private onSelectedDateChanged;
-        private animateFn;
         onSwipeFullMonth(direction?: number, isStartOfMonth?: boolean): Promise<{
             month: number;
             year: number;
